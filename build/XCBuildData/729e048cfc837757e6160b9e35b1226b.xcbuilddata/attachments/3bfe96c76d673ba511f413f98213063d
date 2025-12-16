@@ -1,0 +1,69 @@
+{
+  "" : {
+    "diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-primary.dia",
+    "emit-module-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-primary-emit-module.dia",
+    "pch" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-primary.swiftdeps"
+  },
+  "/Users/jonmobley/Documents/Force_backup/Force/ForceClip/CalculatorSettings.swift" : {
+    "const-values" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings.swiftconstvalues",
+    "dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings.d",
+    "diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings.dia",
+    "index-unit-output-path" : "/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings.o",
+    "llvm-bc" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings.bc",
+    "object" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings.o",
+    "swift-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings.swiftdeps",
+    "swiftmodule" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorSettings~partial.swiftmodule"
+  },
+  "/Users/jonmobley/Documents/Force_backup/Force/ForceClip/CalculatorView.swift" : {
+    "const-values" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView.swiftconstvalues",
+    "dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView.d",
+    "diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView.dia",
+    "index-unit-output-path" : "/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView.o",
+    "llvm-bc" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView.bc",
+    "object" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView.o",
+    "swift-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView.swiftdeps",
+    "swiftmodule" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/CalculatorView~partial.swiftmodule"
+  },
+  "/Users/jonmobley/Documents/Force_backup/Force/ForceClip/ContentView.swift" : {
+    "const-values" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView.swiftconstvalues",
+    "dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView.d",
+    "diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView.dia",
+    "index-unit-output-path" : "/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView.o",
+    "swift-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView.swiftdeps",
+    "swiftmodule" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ContentView~partial.swiftmodule"
+  },
+  "/Users/jonmobley/Documents/Force_backup/Force/ForceClip/ForceClip.swift" : {
+    "const-values" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f.swiftconstvalues",
+    "dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f.d",
+    "diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f.dia",
+    "index-unit-output-path" : "/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f.o",
+    "llvm-bc" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f.bc",
+    "object" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f.o",
+    "swift-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f.swiftdeps",
+    "swiftmodule" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClip-15d15c94d887a4a6380a4ad9c64fed5f~partial.swiftmodule"
+  },
+  "/Users/jonmobley/Documents/Force_backup/Force/ForceClip/ForceClipApp.swift" : {
+    "const-values" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp.swiftconstvalues",
+    "dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp.d",
+    "diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp.dia",
+    "index-unit-output-path" : "/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp.o",
+    "llvm-bc" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp.bc",
+    "object" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp.o",
+    "swift-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp.swiftdeps",
+    "swiftmodule" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/ForceClipApp~partial.swiftmodule"
+  },
+  "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/jonmobley/Documents/Force_backup/Force/build/Force.build/Debug-iphoneos/ForceClip.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

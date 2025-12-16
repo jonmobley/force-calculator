@@ -6,20 +6,89 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		E232B1CE2DFDA4F900D7F19D /* ForceClip.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E232B1C62DFDA4F900D7F19D /* ForceClip.framework */; };
+		E232B1CF2DFDA4F900D7F19D /* ForceClip.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E232B1C62DFDA4F900D7F19D /* ForceClip.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E232B1CC2DFDA4F900D7F19D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E232B1AB2DFDA4DC00D7F19D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E232B1C52DFDA4F900D7F19D;
+			remoteInfo = ForceClip;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E232B1D32DFDA4F900D7F19D /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				E232B1CF2DFDA4F900D7F19D /* ForceClip.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		E232B1B32DFDA4DC00D7F19D /* Force.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Force.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E232B1C62DFDA4F900D7F19D /* ForceClip.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = ForceClip.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		E232B1D92DFDA51100D7F19D /* Shared.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; name = Shared.framework; path = ForceShared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E243BDAB2EF1CAFC0021FA5B /* Exceptions for "Force" folder in "Force" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = E232B1B22DFDA4DC00D7F19D /* Force */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		E232B1B52DFDA4DC00D7F19D /* Force */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E243BDAB2EF1CAFC0021FA5B /* Exceptions for "Force" folder in "Force" target */,
+			);
 			path = Force;
 			sourceTree = "<group>";
+		};
+		E232B1C72DFDA4F900D7F19D /* ForceClip */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ForceClip;
+			sourceTree = "<group>";
+		};
+		E232B1DA2DFDA51100D7F19D /* ../Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ../Shared;
+			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		E232B1B02DFDA4DC00D7F19D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E232B1CE2DFDA4F900D7F19D /* ForceClip.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E232B1C32DFDA4F900D7F19D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E232B1D62DFDA51100D7F19D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +102,8 @@
 			isa = PBXGroup;
 			children = (
 				E232B1B52DFDA4DC00D7F19D /* Force */,
+				E232B1C72DFDA4F900D7F19D /* ForceClip */,
+				E232B1DA2DFDA51100D7F19D /* ../Shared */,
 				E232B1B42DFDA4DC00D7F19D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,11 +112,30 @@
 			isa = PBXGroup;
 			children = (
 				E232B1B32DFDA4DC00D7F19D /* Force.app */,
+				E232B1C62DFDA4F900D7F19D /* ForceClip.framework */,
+				E232B1D92DFDA51100D7F19D /* Shared.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		E232B1C12DFDA4F900D7F19D /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E232B1D42DFDA51100D7F19D /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
 		E232B1B22DFDA4DC00D7F19D /* Force */ = {
@@ -55,10 +145,12 @@
 				E232B1AF2DFDA4DC00D7F19D /* Sources */,
 				E232B1B02DFDA4DC00D7F19D /* Frameworks */,
 				E232B1B12DFDA4DC00D7F19D /* Resources */,
+				E232B1D32DFDA4F900D7F19D /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E232B1CD2DFDA4F900D7F19D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				E232B1B52DFDA4DC00D7F19D /* Force */,
@@ -69,6 +161,52 @@
 			productName = Force;
 			productReference = E232B1B32DFDA4DC00D7F19D /* Force.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E232B1C52DFDA4F900D7F19D /* ForceClip */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E232B1D02DFDA4F900D7F19D /* Build configuration list for PBXNativeTarget "ForceClip" */;
+			buildPhases = (
+				E232B1C12DFDA4F900D7F19D /* Headers */,
+				E232B1C22DFDA4F900D7F19D /* Sources */,
+				E232B1C32DFDA4F900D7F19D /* Frameworks */,
+				E232B1C42DFDA4F900D7F19D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E232B1C72DFDA4F900D7F19D /* ForceClip */,
+			);
+			name = ForceClip;
+			packageProductDependencies = (
+			);
+			productName = ForceClip;
+			productReference = E232B1C62DFDA4F900D7F19D /* ForceClip.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		E232B1D82DFDA51100D7F19D /* Shared */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E232B1E32DFDA51100D7F19D /* Build configuration list for PBXNativeTarget "Shared" */;
+			buildPhases = (
+				E232B1D42DFDA51100D7F19D /* Headers */,
+				E232B1D52DFDA51100D7F19D /* Sources */,
+				E232B1D62DFDA51100D7F19D /* Frameworks */,
+				E232B1D72DFDA51100D7F19D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E232B1DA2DFDA51100D7F19D /* ../Shared */,
+			);
+			name = Shared;
+			packageProductDependencies = (
+			);
+			productName = Shared;
+			productReference = E232B1D92DFDA51100D7F19D /* Shared.framework */;
+			productType = "com.apple.product-type.framework";
 		};
 /* End PBXNativeTarget section */
 
@@ -81,6 +219,12 @@
 				LastUpgradeCheck = 1630;
 				TargetAttributes = {
 					E232B1B22DFDA4DC00D7F19D = {
+						CreatedOnToolsVersion = 16.3;
+					};
+					E232B1C52DFDA4F900D7F19D = {
+						CreatedOnToolsVersion = 16.3;
+					};
+					E232B1D82DFDA51100D7F19D = {
 						CreatedOnToolsVersion = 16.3;
 					};
 				};
@@ -100,12 +244,28 @@
 			projectRoot = "";
 			targets = (
 				E232B1B22DFDA4DC00D7F19D /* Force */,
+				E232B1C52DFDA4F900D7F19D /* ForceClip */,
+				E232B1D82DFDA51100D7F19D /* Shared */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		E232B1B12DFDA4DC00D7F19D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E232B1C42DFDA4F900D7F19D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E232B1D72DFDA51100D7F19D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +282,29 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E232B1C22DFDA4F900D7F19D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E232B1D52DFDA51100D7F19D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E232B1CD2DFDA4F900D7F19D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E232B1C52DFDA4F900D7F19D /* ForceClip */;
+			targetProxy = E232B1CC2DFDA4F900D7F19D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		E232B1BC2DFDA4DD00D7F19D /* Debug */ = {
@@ -251,11 +433,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Force/Force.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2YBTPD32DW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Force/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Force;
+				INFOPLIST_KEY_NFCReaderUsageDescription = "Force needs NFC access to write the App Clip link to NFC stickers.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Force needs access to save the QR code to your photo library for easy sharing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -268,6 +455,9 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mobleypro.mobley.Force;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -279,11 +469,16 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Force/Force.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 2YBTPD32DW;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Force/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Force;
+				INFOPLIST_KEY_NFCReaderUsageDescription = "Force needs NFC access to write the App Clip link to NFC stickers.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Force needs access to save the QR code to your photo library for easy sharing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -296,9 +491,169 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.mobleypro.mobley.Force;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		E232B1D12DFDA4F900D7F19D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2YBTPD32DW;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mobleypro.mobley.ForceClip;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		E232B1D22DFDA4F900D7F19D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2YBTPD32DW;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mobleypro.mobley.ForceClip;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		E232B1E42DFDA51100D7F19D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2YBTPD32DW;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				EAGER_LINKING = NO;
+				ENABLE_MODULE_VERIFIER = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mobleypro.mobley.Shared;
+				PRODUCT_MODULE_NAME = ForceShared;
+				PRODUCT_NAME = ForceShared;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		E232B1E52DFDA51100D7F19D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2YBTPD32DW;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				EAGER_LINKING = NO;
+				ENABLE_MODULE_VERIFIER = YES;
+				FRAMEWORK_SEARCH_PATHS = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = com.mobleypro.mobley.Shared;
+				PRODUCT_MODULE_NAME = ForceShared;
+				PRODUCT_NAME = ForceShared;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
 			};
 			name = Release;
 		};
@@ -319,6 +674,24 @@
 			buildConfigurations = (
 				E232B1BF2DFDA4DD00D7F19D /* Debug */,
 				E232B1C02DFDA4DD00D7F19D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E232B1D02DFDA4F900D7F19D /* Build configuration list for PBXNativeTarget "ForceClip" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E232B1D12DFDA4F900D7F19D /* Debug */,
+				E232B1D22DFDA4F900D7F19D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E232B1E32DFDA51100D7F19D /* Build configuration list for PBXNativeTarget "Shared" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E232B1E42DFDA51100D7F19D /* Debug */,
+				E232B1E52DFDA51100D7F19D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
