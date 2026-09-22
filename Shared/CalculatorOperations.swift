@@ -17,94 +17,72 @@ public enum CalculatorOperation {
 public struct CalculatorOperations {
     public static func digitPressed(
         _ digit: String,
-        display: inout String,
-        userIsTyping: inout Bool,
-        lastOperationWasEquals: inout Bool,
+        state: inout CalculatorState,
         plusPerfectMode: PlusPerfectState
     ) {
-        lastOperationWasEquals = false
         if plusPerfectMode == .armed { return }
-        let digitCount = display.filter { $0.isNumber }.count
-        if userIsTyping {
+        let digitCount = state.display.filter { $0.isNumber }.count
+        if state.userIsTyping {
             guard digitCount < 9 else { return }
-            display = CalculatorFormatter.formatDisplay(display + digit)
+            state.display = CalculatorFormatter.formatDisplay(state.display + digit)
         } else {
-            display = digit
-            userIsTyping = true
+            state.display = digit
+            state.userIsTyping = true
         }
     }
 
     public static func decimalPressed(
-        display: inout String,
-        userIsTyping: inout Bool,
-        lastOperationWasEquals: inout Bool,
+        state: inout CalculatorState,
         plusPerfectMode: PlusPerfectState
     ) {
-        lastOperationWasEquals = false
-        if plusPerfectMode == .armed || display.contains(".") { return }
-        if userIsTyping {
-            display += "."
+        if plusPerfectMode == .armed || state.display.contains(".") { return }
+        if state.userIsTyping {
+            state.display += "."
         } else {
-            display = "0."
-            userIsTyping = true
+            state.display = "0."
+            state.userIsTyping = true
         }
     }
 
     public static func backspace(
-        display: inout String,
-        userIsTyping: inout Bool,
+        state: inout CalculatorState,
         plusPerfectMode: PlusPerfectState
     ) {
         if plusPerfectMode == .armed { return }
-        let cleaned = display.replacingOccurrences(of: ",", with: "")
+        let cleaned = state.display.replacingOccurrences(of: ",", with: "")
         if cleaned.count > 1 {
-            display = CalculatorFormatter.formatDisplay(String(cleaned.dropLast()))
+            state.display = CalculatorFormatter.formatDisplay(String(cleaned.dropLast()))
         } else {
-            display = "0"
-            userIsTyping = false
+            state.display = "0"
+            state.userIsTyping = false
         }
     }
 
-    public static func toggleSign(display: inout String, plusPerfectMode: PlusPerfectState) {
-        if plusPerfectMode == .armed || display == "0" { return }
-        if display.hasPrefix("-") {
-            display.removeFirst()
-        } else {
-            display = "-" + display
-        }
-        display = CalculatorFormatter.formatDisplay(display)
-    }
-
-    public static func clearEntry(display: inout String, userIsTyping: inout Bool) {
-        display = "0"
-        userIsTyping = false
-    }
-
-    public static func clearAll(
-        display: inout String,
-        currentNumber: inout Double,
-        previousNumber: inout Double,
-        operation: inout CalculatorOperation?,
-        userIsTyping: inout Bool,
-        forceCount: inout Int,
-        lastMinuteChecked: inout Int?,
-        hasUpdatedForMinuteChange: inout Bool,
-        plusPerfectHandler: PlusPerfectHandler,
-        lastOperationWasEquals: inout Bool,
-        lastOperation: inout CalculatorOperation?,
-        lastOperand: inout Double
+    public static func toggleSign(
+        state: inout CalculatorState,
+        plusPerfectMode: PlusPerfectState
     ) {
-        display = "0"
-        currentNumber = 0
-        previousNumber = 0
-        operation = nil
-        userIsTyping = false
-        forceCount = 0
-        lastMinuteChecked = nil
-        hasUpdatedForMinuteChange = false
+        if plusPerfectMode == .armed || state.display == "0" { return }
+        if state.display.hasPrefix("-") {
+            state.display.removeFirst()
+        } else {
+            state.display = "-" + state.display
+        }
+        state.display = CalculatorFormatter.formatDisplay(state.display)
+    }
+
+    /// Clears the entry on the display, leaving any calculation under way in place.
+    public static func clearEntry(state: inout CalculatorState) {
+        state.display = "0"
+        state.userIsTyping = false
+    }
+
+    /// Clears the whole session, including the force count and any pending trick.
+    public static func clearAll(
+        state: inout CalculatorState,
+        plusPerfectHandler: PlusPerfectHandler
+    ) {
+        state = CalculatorState()
         plusPerfectHandler.reset()
-        lastOperationWasEquals = false
-        lastOperation = nil
-        lastOperand = 0
     }
 }

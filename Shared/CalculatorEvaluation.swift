@@ -1,135 +1,79 @@
 import Foundation
 
 extension CalculatorOperations {
+    /// True when an operator press has a sum under way that must be finished first, so the
+    /// next operation starts from the running total.
+    ///
+    /// The callers settle this and press equals themselves before handing the keys over, so
+    /// the two calls happen one after the other rather than one inside the other.
+    public static func shouldFinishPendingSum(
+        _ state: CalculatorState,
+        plusPerfectMode: PlusPerfectState
+    ) -> Bool {
+        plusPerfectMode != .armed && state.operation != nil && state.userIsTyping
+    }
+
     public static func performOperation(
         _ op: CalculatorOperation,
-        display: inout String,
-        previousNumber: inout Double,
-        operation: inout CalculatorOperation?,
-        userIsTyping: inout Bool,
-        lastButtonWasOperation: inout Bool,
-        lastOperationWasEquals: inout Bool,
+        state: inout CalculatorState,
         settings: CalculatorSettings,
-        plusPerfectHandler: PlusPerfectHandler,
-        equalsAction: () -> Void
+        plusPerfectHandler: PlusPerfectHandler
     ) {
         // The keypad is inert while armed, so a stray tap cannot disturb the trick.
         // Clear is the way out.
         guard plusPerfectHandler.mode != .armed else { return }
-        lastOperationWasEquals = false
-        if operation != nil, userIsTyping {
-            equalsAction()
-        }
-        previousNumber = CalculatorFormatter.parseDisplay(display)
-        operation = op
-        userIsTyping = false
-        lastButtonWasOperation = true
+        state.previousNumber = CalculatorFormatter.parseDisplay(state.display)
+        state.operation = op
+        state.userIsTyping = false
         if op == .percent {
-            display = CalculatorFormatter.formatResult(previousNumber / 100)
-            operation = nil
+            state.display = CalculatorFormatter.formatResult(state.previousNumber / 100)
+            state.operation = nil
         }
         updatePlusPerfect(
             op,
-            operand: previousNumber,
+            operand: state.previousNumber,
             settings: settings,
             plusPerfectHandler: plusPerfectHandler
         )
     }
 
     public static func equals(
-        display: inout String,
-        currentNumber: inout Double,
-        previousNumber: inout Double,
-        operation: inout CalculatorOperation?,
-        userIsTyping: inout Bool,
-        lastButtonWasOperation: inout Bool,
-        lastOperationWasEquals: inout Bool,
-        forceCount: inout Int,
-        lastMinuteChecked: inout Int?,
-        hasUpdatedForMinuteChange: inout Bool,
-        settings: CalculatorSettings,
-        plusPerfectHandler: PlusPerfectHandler,
-        lastOperation: inout CalculatorOperation?,
-        lastOperand: inout Double
+        state: inout CalculatorState,
+        force: ForceValues,
+        plusPerfectHandler: PlusPerfectHandler
     ) {
         guard plusPerfectHandler.mode != .armed else { return }
         if plusPerfectHandler.mode == .calculated {
-            showPlusPerfectResult(display: &display, settings: settings, plusPerfectHandler: plusPerfectHandler)
-            lastOperationWasEquals = false
+            showPlusPerfectResult(&state, force: force, plusPerfectHandler: plusPerfectHandler)
             return
         }
         // The addition is finishing, so a turn of the phone afterwards must not arm anything.
         plusPerfectHandler.reset()
-        guard let currentOp = operation ?? lastOperation else {
-            lastOperationWasEquals = true
-            return
-        }
+        guard let currentOp = state.operation ?? state.lastOperation else { return }
         if currentOp == .percent { return }
-        assignOperands(
-            display: display,
-            currentNumber: &currentNumber,
-            previousNumber: &previousNumber,
-            operation: operation,
-            lastOperand: lastOperand
-        )
-        guard let calculated = evaluate(currentOp, previous: previousNumber, current: currentNumber) else {
-            display = "Error"
+        assignOperands(&state)
+        guard let calculated = evaluate(
+            currentOp,
+            previous: state.previousNumber,
+            current: state.currentNumber
+        ) else {
+            state.display = "Error"
             return
         }
-        commitResult(
-            calculated,
-            display: &display,
-            currentNumber: currentNumber,
-            previousNumber: &previousNumber,
-            operation: &operation,
-            userIsTyping: &userIsTyping,
-            lastButtonWasOperation: &lastButtonWasOperation,
-            lastOperationWasEquals: &lastOperationWasEquals,
-            forceCount: &forceCount,
-            lastMinuteChecked: &lastMinuteChecked,
-            hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange,
-            settings: settings,
-            lastOperation: &lastOperation,
-            lastOperand: &lastOperand
-        )
+        commitResult(calculated, state: &state, force: force)
     }
 
     private static func commitResult(
         _ calculated: Double,
-        display: inout String,
-        currentNumber: Double,
-        previousNumber: inout Double,
-        operation: inout CalculatorOperation?,
-        userIsTyping: inout Bool,
-        lastButtonWasOperation: inout Bool,
-        lastOperationWasEquals: inout Bool,
-        forceCount: inout Int,
-        lastMinuteChecked: inout Int?,
-        hasUpdatedForMinuteChange: inout Bool,
-        settings: CalculatorSettings,
-        lastOperation: inout CalculatorOperation?,
-        lastOperand: inout Double
+        state: inout CalculatorState,
+        force: ForceValues
     ) {
-        let result = applyForce(
-            calculated: calculated,
-            forceCount: &forceCount,
-            lastMinuteChecked: &lastMinuteChecked,
-            hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange,
-            settings: settings,
-            operation: &operation
-        )
-        display = CalculatorFormatter.formatResult(result)
-        previousNumber = result
-        storeRepeat(
-            operation: operation,
-            currentNumber: currentNumber,
-            lastOperation: &lastOperation,
-            lastOperand: &lastOperand
-        )
-        if forceCount == 0 { operation = nil }
-        userIsTyping = false
-        lastButtonWasOperation = false
-        lastOperationWasEquals = true
+        let result = applyForce(calculated: calculated, state: &state, force: force)
+        state.display = CalculatorFormatter.formatResult(result)
+        state.previousNumber = result
+        storeRepeat(&state)
+        if state.forceCount == 0 { state.operation = nil }
+        state.userIsTyping = false
     }
 
     // MARK: - Plus Perfect
@@ -153,15 +97,19 @@ extension CalculatorOperations {
         plusPerfectHandler.markPendingAdd(operand: operand)
     }
 
+    /// Lands the reveal as an ordinary finished calculation. The pending add has to go with
+    /// it: left in place, a second equals would add the saved number to the force and carry
+    /// the display off the number the spectator was just shown. The activation count starts
+    /// again too, so the keys that follow the reveal are honest ones.
     private static func showPlusPerfectResult(
-        display: inout String,
-        settings: CalculatorSettings,
+        _ state: inout CalculatorState,
+        force: ForceValues,
         plusPerfectHandler: PlusPerfectHandler
     ) {
-        let forceNumber = settings.magicTrickMode == .forceNumber
-            ? Double(settings.forceNumber)
-            : Double(settings.getCurrentDateTimeNumber())
-        display = CalculatorFormatter.formatResult(forceNumber)
+        let forcedNumber = Double(force.number)
+        state = CalculatorState()
+        state.display = CalculatorFormatter.formatResult(forcedNumber)
+        state.previousNumber = forcedNumber
         plusPerfectHandler.reset()
     }
 }

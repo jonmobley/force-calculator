@@ -5,6 +5,8 @@ import ForceShared
 struct ContentView: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @EnvironmentObject private var configPublisher: ForceConfigPublisher
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var peekReader = ForcePeekReader()
     @State private var forceNumberText = ""
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var backgroundImage: UIImage?
@@ -18,6 +20,7 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 Form {
                     ForceCalculatorSettingsSection(forceNumberText: $forceNumberText)
+                    ForcePeekSection(reader: peekReader)
                     ForcePhonePerformanceSection(
                         selectedPhotoItem: $selectedPhotoItem,
                         backgroundImage: backgroundImage,
@@ -36,7 +39,10 @@ struct ContentView: View {
             .navigationTitle("Force")
             .tint(themeColor)
             .onAppear(perform: appear)
+            .onDisappear { peekReader.stop() }
             .onChange(of: selectedPhotoItem) { _, _ in loadSelectedPhoto() }
+            .onChange(of: settings.livePeekEnabled) { _, _ in updatePeekReader() }
+            .onChange(of: scenePhase) { _, _ in updatePeekReader() }
             .onChange(of: settings.forceNumber) { _, newValue in
                 if String(newValue) != forceNumberText {
                     forceNumberText = String(newValue)
@@ -75,7 +81,18 @@ struct ContentView: View {
         if settings.openToCalculator {
             showingCalculator = true
         }
+        updatePeekReader()
         Task { await loadBackgroundImageAsync() }
+    }
+
+    /// Polls for peeks only while the performer is looking at this screen and live
+    /// peek is on, so nothing runs in the background or when the feature is off.
+    private func updatePeekReader() {
+        if settings.livePeekEnabled, scenePhase == .active {
+            peekReader.start()
+        } else {
+            peekReader.stop()
+        }
     }
 
     private func loadSelectedPhoto() {

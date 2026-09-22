@@ -18,6 +18,7 @@ struct ForceCalculatorSettingsSection: View {
             activationPicker
             plusPerfectToggle
             screenshotToggle
+            livePeekToggle
         }
     }
 
@@ -113,6 +114,15 @@ struct ForceCalculatorSettingsSection: View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle("Start with Screenshot", isOn: $settings.startWithScreenshot)
             Text("App starts showing screenshot, tap anywhere to open calculator")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var livePeekToggle: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Live Peek", isOn: $settings.livePeekEnabled)
+            Text("See the number the spectator types in the App Clip, live, without them pressing equals.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }

@@ -1,18 +1,15 @@
 import Foundation
 
 extension CalculatorOperations {
-    static func assignOperands(
-        display: String,
-        currentNumber: inout Double,
-        previousNumber: inout Double,
-        operation: CalculatorOperation?,
-        lastOperand: Double
-    ) {
-        if operation == nil {
-            previousNumber = CalculatorFormatter.parseDisplay(display)
-            currentNumber = lastOperand
+    /// Works out which two numbers the pending operation applies to. With no operation
+    /// waiting, the press is a repeat of the last one, so the display becomes the left-hand
+    /// operand and the stored operand comes back as the right.
+    static func assignOperands(_ state: inout CalculatorState) {
+        if state.operation == nil {
+            state.previousNumber = CalculatorFormatter.parseDisplay(state.display)
+            state.currentNumber = state.lastOperand
         } else {
-            currentNumber = CalculatorFormatter.parseDisplay(display)
+            state.currentNumber = CalculatorFormatter.parseDisplay(state.display)
         }
     }
 
@@ -35,70 +32,27 @@ extension CalculatorOperations {
         }
     }
 
+    /// Advances the equals count and hands back either the honest result or the force.
     static func applyForce(
         calculated: Double,
-        forceCount: inout Int,
-        lastMinuteChecked: inout Int?,
-        hasUpdatedForMinuteChange: inout Bool,
-        settings: CalculatorSettings,
-        operation: inout CalculatorOperation?
+        state: inout CalculatorState,
+        force: ForceValues
     ) -> Double {
-        let willForce = forceCount + 1 >= settings.activationCount
-        let forceValue = willForce
-            ? forceValue(
-                settings: settings,
-                lastMinuteChecked: &lastMinuteChecked,
-                hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange
-            )
-            : calculated
         let step = ForceActivation.advance(
             calculated: calculated,
-            forceCount: forceCount,
-            activationCount: settings.activationCount,
-            forceValue: forceValue
+            forceCount: state.forceCount,
+            activationCount: force.activationCount,
+            forceValue: Double(force.number)
         )
-        forceCount = step.forceCount
-        if step.didForce { operation = nil }
+        state.forceCount = step.forceCount
+        if step.didForce { state.operation = nil }
         return step.result
     }
 
-    static func storeRepeat(
-        operation: CalculatorOperation?,
-        currentNumber: Double,
-        lastOperation: inout CalculatorOperation?,
-        lastOperand: inout Double
-    ) {
-        guard operation != nil else { return }
-        lastOperation = operation
-        lastOperand = currentNumber
-    }
-
-    // MARK: - Force value
-
-    private static func forceValue(
-        settings: CalculatorSettings,
-        lastMinuteChecked: inout Int?,
-        hasUpdatedForMinuteChange: inout Bool
-    ) -> Double {
-        if settings.magicTrickMode == .forceNumber {
-            return Double(settings.forceNumber)
-        }
-        noteMinuteChange(
-            lastMinuteChecked: &lastMinuteChecked,
-            hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange
-        )
-        return Double(settings.getCurrentDateTimeNumber())
-    }
-
-    private static func noteMinuteChange(
-        lastMinuteChecked: inout Int?,
-        hasUpdatedForMinuteChange: inout Bool
-    ) {
-        let currentMinute = Calendar.current.component(.minute, from: Date())
-        if lastMinuteChecked == nil {
-            lastMinuteChecked = currentMinute
-        } else if !hasUpdatedForMinuteChange && currentMinute != lastMinuteChecked {
-            hasUpdatedForMinuteChange = true
-        }
+    /// Remembers the operation and operand so a bare equals press can apply them again.
+    static func storeRepeat(_ state: inout CalculatorState) {
+        guard state.operation != nil else { return }
+        state.lastOperation = state.operation
+        state.lastOperand = state.currentNumber
     }
 }

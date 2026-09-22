@@ -8,10 +8,12 @@ struct HostCalculatorDisplay: View {
     let geometry: GeometryProxy
     let themeColor: Color
     let showForceNumber: Bool
-    let forceNumber: Int
     let showModeText: Bool
     let modeName: String
+    let forcedNumber: Int
     let onDismiss: () -> Void
+    let onQuickEntry: () -> Void
+    let quickEntryStage: QuickForceEntry.Stage
     let onToggleMode: () -> Void
     let onRevealMode: () -> Void
 
@@ -21,10 +23,12 @@ struct HostCalculatorDisplay: View {
             geometry: geometry,
             themeColor: themeColor,
             showForceNumber: showForceNumber,
-            forceNumber: forceNumber,
             showModeText: showModeText,
             modeName: modeName,
+            forcedNumber: forcedNumber,
             onDismiss: onDismiss,
+            onQuickEntry: onQuickEntry,
+            quickEntryStage: quickEntryStage,
             onToggleMode: onToggleMode,
             onRevealMode: onRevealMode
         )

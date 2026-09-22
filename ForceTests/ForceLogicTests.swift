@@ -55,30 +55,57 @@ final class ForceLogicTests: XCTestCase {
     }
 
     func testPlusPerfectArmsOnlyWhenTurnedOverWithPlusPending() {
-        XCTAssertTrue(PlusPerfectMath.shouldArm(mode: .pendingAdd, heldOrientation: .portraitUpsideDown))
-        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .pendingAdd, heldOrientation: .portrait))
-        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .pendingAdd, heldOrientation: .landscapeLeft))
+        XCTAssertTrue(PlusPerfectMath.shouldArm(mode: .pendingAdd, position: .upsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .pendingAdd, position: .upright))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .pendingAdd, position: .sideways))
         // No pending plus means turning the phone over does nothing at all.
-        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .inactive, heldOrientation: .portraitUpsideDown))
-        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .armed, heldOrientation: .portraitUpsideDown))
-        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .calculated, heldOrientation: .portraitUpsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .inactive, position: .upsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .armed, position: .upsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .calculated, position: .upsideDown))
     }
 
-    func testPlusPerfectIgnoresFlatOrientations() {
-        XCTAssertEqual(PlusPerfectMath.heldOrientation(.portraitUpsideDown), .portraitUpsideDown)
-        XCTAssertEqual(PlusPerfectMath.heldOrientation(.landscapeLeft), .landscapeLeft)
-        XCTAssertNil(PlusPerfectMath.heldOrientation(.faceUp))
-        XCTAssertNil(PlusPerfectMath.heldOrientation(.faceDown))
-        XCTAssertNil(PlusPerfectMath.heldOrientation(.unknown))
+    func testPlusPerfectRevealsOnlyWhenBackUprightWhileArmed() {
+        XCTAssertTrue(PlusPerfectMath.shouldReveal(mode: .armed, position: .upright))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .armed, position: .sideways))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .armed, position: .upsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .inactive, position: .upright))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .pendingAdd, position: .upright))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .calculated, position: .upright))
     }
 
-    func testPlusPerfectRevealsOnlyOnUprightPortraitWhileArmed() {
-        XCTAssertTrue(PlusPerfectMath.shouldReveal(mode: .armed, heldOrientation: .portrait))
-        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .armed, heldOrientation: .landscapeRight))
-        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .armed, heldOrientation: .portraitUpsideDown))
-        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .inactive, heldOrientation: .portrait))
-        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .pendingAdd, heldOrientation: .portrait))
-        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .calculated, heldOrientation: .portrait))
+    func testPlanePositionFromGravityHeldVertically() {
+        XCTAssertEqual(PlusPerfectMath.planePosition(gravityX: 0, gravityY: -1), .upright)
+        XCTAssertEqual(PlusPerfectMath.planePosition(gravityX: 0, gravityY: 1), .upsideDown)
+        XCTAssertEqual(PlusPerfectMath.planePosition(gravityX: -1, gravityY: 0), .sideways)
+        XCTAssertEqual(PlusPerfectMath.planePosition(gravityX: 1, gravityY: 0), .sideways)
+    }
+
+    /// Held out at a shallow angle for someone to tap, only a sliver of gravity lands in
+    /// the screen plane, but it still says which way round the phone is.
+    func testPlanePositionSurvivesShallowTilt() {
+        // Upside down, roughly 13 degrees off flat.
+        XCTAssertEqual(PlusPerfectMath.planePosition(gravityX: 0, gravityY: 0.22), .upsideDown)
+        // Upside down and skewed 25 degrees, still well inside the band.
+        XCTAssertEqual(PlusPerfectMath.planePosition(gravityX: 0.1, gravityY: 0.22), .upsideDown)
+        // Upright at the same shallow angle.
+        XCTAssertEqual(PlusPerfectMath.planePosition(gravityX: 0, gravityY: -0.22), .upright)
+    }
+
+    /// Flat enough that the in-plane direction is mostly noise, so the caller keeps
+    /// whatever it last saw rather than trusting this.
+    func testPlanePositionIsUnknownWhenNearlyLevel() {
+        XCTAssertNil(PlusPerfectMath.planePosition(gravityX: 0, gravityY: 0.1))
+        XCTAssertNil(PlusPerfectMath.planePosition(gravityX: 0.05, gravityY: -0.05))
+        XCTAssertNil(PlusPerfectMath.planePosition(gravityX: 0, gravityY: 0))
+    }
+
+    func testPlanePositionFallbackCannotReadTiltedPhone() {
+        XCTAssertEqual(PlusPerfectMath.planePosition(.portraitUpsideDown), .upsideDown)
+        XCTAssertEqual(PlusPerfectMath.planePosition(.portrait), .upright)
+        XCTAssertEqual(PlusPerfectMath.planePosition(.landscapeLeft), .sideways)
+        XCTAssertNil(PlusPerfectMath.planePosition(.faceUp))
+        XCTAssertNil(PlusPerfectMath.planePosition(.faceDown))
+        XCTAssertNil(PlusPerfectMath.planePosition(.unknown))
     }
 
     func testAppClipURLRoundTrip() {

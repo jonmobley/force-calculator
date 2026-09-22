@@ -86,6 +86,10 @@ public class CalculatorSettings: ObservableObject, Codable {
     @Published public var dateTimeFormat: DateTimeFormat = .mmDDYY
     @Published public var plusPerfectEnabled: Bool = false
     @Published public var startWithScreenshot: Bool = false
+    /// When on, the App Clip reports the spectator's typed number back to the
+    /// performer's app. Off by default so the calculator sends nothing unless the
+    /// performer has deliberately turned live peek on.
+    @Published public var livePeekEnabled: Bool = false
 
     public static let appGroup = "group.com.mobleypro.mobley.Force"
     public static let userDefaultsKey = "calculatorSettings"
@@ -93,6 +97,7 @@ public class CalculatorSettings: ObservableObject, Codable {
     enum CodingKeys: String, CodingKey {
         case theme, forceNumber, activationCount, currentCount, magicTrickMode
         case buttonTheme, openToCalculator, dateTimeFormat, plusPerfectEnabled, startWithScreenshot
+        case livePeekEnabled
     }
 
     public init() {}
@@ -109,6 +114,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         dateTimeFormat = try container.decodeIfPresent(DateTimeFormat.self, forKey: .dateTimeFormat) ?? .mmDDYY
         plusPerfectEnabled = try container.decodeIfPresent(Bool.self, forKey: .plusPerfectEnabled) ?? false
         startWithScreenshot = try container.decodeIfPresent(Bool.self, forKey: .startWithScreenshot) ?? false
+        livePeekEnabled = try container.decodeIfPresent(Bool.self, forKey: .livePeekEnabled) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -123,6 +129,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         try container.encode(dateTimeFormat, forKey: .dateTimeFormat)
         try container.encode(plusPerfectEnabled, forKey: .plusPerfectEnabled)
         try container.encode(startWithScreenshot, forKey: .startWithScreenshot)
+        try container.encode(livePeekEnabled, forKey: .livePeekEnabled)
     }
 
     // MARK: - Load and save
@@ -141,6 +148,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         dateTimeFormat = stored.dateTimeFormat
         plusPerfectEnabled = stored.plusPerfectEnabled
         startWithScreenshot = stored.startWithScreenshot
+        livePeekEnabled = stored.livePeekEnabled
     }
 
     /// Replaces this object with the suite record, or leaves the defaults in place.
@@ -213,6 +221,14 @@ public class CalculatorSettings: ObservableObject, Codable {
     /// Current date/time integer using `dateTimeFormat`.
     public func getCurrentDateTimeNumber(now: Date = Date(), calendar: Calendar = .current) -> Int {
         DateTimeNumber.format(now, format: dateTimeFormat, calendar: calendar)
+    }
+
+    /// The number the equals key will land on in the current mode: the stored force
+    /// number, or whatever the clock reads right now in Date and Time mode. Defined once
+    /// here because several places need the same answer and a third mode would otherwise
+    /// have to be added to each of them.
+    public var forcedNumber: Int {
+        magicTrickMode == .forceNumber ? forceNumber : getCurrentDateTimeNumber()
     }
 
     private static func suiteDefaults() -> UserDefaults {

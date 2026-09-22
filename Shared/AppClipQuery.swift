@@ -14,6 +14,7 @@ public struct AppClipQuery: Equatable {
     public var buttonTheme: ButtonTheme
     public var plusPerfectEnabled: Bool
     public var startWithScreenshot: Bool
+    public var livePeekEnabled: Bool
 
     public init(settings: CalculatorSettings) {
         forceNumber = settings.forceNumber
@@ -23,6 +24,7 @@ public struct AppClipQuery: Equatable {
         buttonTheme = settings.buttonTheme
         plusPerfectEnabled = settings.plusPerfectEnabled
         startWithScreenshot = settings.startWithScreenshot
+        livePeekEnabled = settings.livePeekEnabled
     }
 
     // MARK: - URL
@@ -43,7 +45,7 @@ public struct AppClipQuery: Equatable {
         return components.url!
     }
 
-    /// Builds `https://appclip.apple.com/id` with `p`, `fn`, `ac`, `mt`, `dt`, `bt`, `pp`, and `sws`.
+    /// Builds `https://appclip.apple.com/id` with `p`, `fn`, `ac`, `mt`, `dt`, `bt`, `pp`, `sws`, and `pk`.
     ///
     /// Retained so stickers written before the config service existed keep
     /// working: the clip still reads these parameters, then overrides them with
@@ -58,7 +60,8 @@ public struct AppClipQuery: Equatable {
             URLQueryItem(name: "dt", value: dateTimeFormat.rawValue),
             URLQueryItem(name: "bt", value: buttonTheme.rawValue),
             URLQueryItem(name: "pp", value: String(plusPerfectEnabled)),
-            URLQueryItem(name: "sws", value: String(startWithScreenshot))
+            URLQueryItem(name: "sws", value: String(startWithScreenshot)),
+            URLQueryItem(name: "pk", value: String(livePeekEnabled))
         ]
         return components.url!
     }
@@ -126,6 +129,9 @@ public struct AppClipQuery: Equatable {
         }
         if let raw = value("sws", in: items), let enabled = Bool(raw) {
             settings.startWithScreenshot = enabled
+        }
+        if let raw = value("pk", in: items), let enabled = Bool(raw) {
+            settings.livePeekEnabled = enabled
         }
     }
 }

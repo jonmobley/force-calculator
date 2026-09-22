@@ -1,56 +1,58 @@
 import Foundation
 import UIKit
+import CoreMotion
 import Combine
 
-/// Drives Plus Perfect from physical device orientation. Plus is pressed with the phone
+/// Drives Plus Perfect from the phone's physical attitude. Plus is pressed with the phone
 /// upright, then turning it over and back arms and fires the trick.
+///
+/// Gravity is read directly rather than through `UIDevice.orientation`, because that
+/// reports `faceUp` as soon as the screen tilts toward horizontal and so cannot say which
+/// way round a phone being held out for someone to tap is.
 public class PlusPerfectHandler: ObservableObject {
     private let hapticGenerator = UIImpactFeedbackGenerator(style: .medium)
+    private let motionManager = CMMotionManager()
     @Published public var mode: PlusPerfectState = .inactive
     public var savedNumber: Double = 0
 
     /// Delay between the two pulses of the armed confirmation.
     private let armedPulseGap: TimeInterval = 0.12
 
-    private var orientationObserver: NSObjectProtocol?
+    /// 10Hz is far quicker than a phone can be turned over and costs little.
+    private let motionUpdateInterval: TimeInterval = 0.1
 
-    private var isSimulator: Bool {
-        #if targetEnvironment(simulator)
-        return true
-        #else
-        return false
-        #endif
-    }
+    private var isMonitoring = false
+    private var orientationObserver: NSObjectProtocol?
 
     public init() {}
 
-    /// Starts orientation notifications. `handler` runs when the phone returns upright after the trick is armed.
+    /// Starts watching the phone's attitude. `handler` runs when the phone comes back
+    /// upright after the trick is armed.
     public func startMonitoring(handler: @escaping () -> Void) {
-        guard orientationObserver == nil else {
-            debugLog("🎭 Plus Perfect: orientation monitoring already running")
+        guard !isMonitoring else {
+            debugLog("🎭 Plus Perfect: monitoring already running")
             return
         }
-        debugLog("🎭 Plus Perfect: Starting orientation monitoring")
-        if isSimulator {
-            debugLog("⚠️ Plus Perfect orientation is unreliable in the simulator. Confirm on a device.")
-        }
+        isMonitoring = true
         hapticGenerator.prepare()
-        // Orientation only reports a real value once notifications are being generated.
-        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-        orientationObserver = NotificationCenter.default.addObserver(
-            forName: UIDevice.orientationDidChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.handleOrientationChange(handler: handler)
+        if motionManager.isDeviceMotionAvailable {
+            debugLog("🎭 Plus Perfect: watching gravity for the turn")
+            startDeviceMotion(handler: handler)
+        } else {
+            debugLog("⚠️ Plus Perfect: no device motion, falling back to coarse orientation. "
+                + "Expect this in the simulator, where a tilted phone cannot be detected.")
+            startOrientationNotifications(handler: handler)
         }
     }
 
     public func stopMonitoring() {
-        UIDevice.current.endGeneratingDeviceOrientationNotifications()
+        guard isMonitoring else { return }
+        isMonitoring = false
+        motionManager.stopDeviceMotionUpdates()
         if let observer = orientationObserver {
             NotificationCenter.default.removeObserver(observer)
             orientationObserver = nil
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
         }
     }
 
@@ -69,48 +71,57 @@ public class PlusPerfectHandler: ObservableObject {
     }
 
     /// Shows the addend that reaches the force number, ready for equals.
-    public func calculatePerfectAddend(
-        display: inout String,
-        operation: inout CalculatorOperation?,
-        previousNumber: inout Double,
-        currentNumber: inout Double,
-        userIsTyping: inout Bool,
-        settings: CalculatorSettings
-    ) {
-        let forceNumber = forcedValue(settings)
+    public func calculatePerfectAddend(state: inout CalculatorState, force: ForceValues) {
+        let forceNumber = Double(force.number)
         let perfectAddend = PlusPerfectMath.perfectAddend(
             savedNumber: savedNumber,
             forceNumber: forceNumber
         )
-        display = CalculatorFormatter.formatResult(perfectAddend)
-        operation = .add
-        previousNumber = savedNumber
-        currentNumber = perfectAddend
+        state.display = CalculatorFormatter.formatResult(perfectAddend)
+        state.operation = .add
+        state.previousNumber = savedNumber
+        state.currentNumber = perfectAddend
+        state.userIsTyping = false
         mode = .calculated
-        userIsTyping = false
         debugLog("🎭 Plus Perfect: addend \(perfectAddend) for force \(forceNumber)")
     }
 
-    // MARK: - Force value
+    // MARK: - Attitude
 
-    private func forcedValue(_ settings: CalculatorSettings) -> Double {
-        if settings.magicTrickMode == .forceNumber {
-            return Double(settings.forceNumber)
+    private func startDeviceMotion(handler: @escaping () -> Void) {
+        motionManager.deviceMotionUpdateInterval = motionUpdateInterval
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
+            guard let motion else { return }
+            let position = PlusPerfectMath.planePosition(
+                gravityX: motion.gravity.x,
+                gravityY: motion.gravity.y
+            )
+            self?.apply(position, handler: handler)
         }
-        return Double(settings.getCurrentDateTimeNumber())
     }
 
-    // MARK: - Orientation
+    private func startOrientationNotifications(handler: @escaping () -> Void) {
+        // Orientation only reports a real value once notifications are being generated.
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+        orientationObserver = NotificationCenter.default.addObserver(
+            forName: UIDevice.orientationDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            let position = PlusPerfectMath.planePosition(UIDevice.current.orientation)
+            self?.apply(position, handler: handler)
+        }
+    }
 
-    /// Flat readings are dropped rather than acted on, so resting the phone on a table
-    /// mid-trick neither arms it nor gives the reveal away.
-    private func handleOrientationChange(handler: @escaping () -> Void) {
-        guard let orientation = PlusPerfectMath.heldOrientation(UIDevice.current.orientation) else { return }
-        if PlusPerfectMath.shouldArm(mode: mode, heldOrientation: orientation) {
+    /// A phone too near level to read is left alone rather than acted on, so whatever was
+    /// last seen still stands and setting the phone down cannot give the reveal away.
+    private func apply(_ position: PlanePosition?, handler: () -> Void) {
+        guard let position else { return }
+        if PlusPerfectMath.shouldArm(mode: mode, position: position) {
             arm()
             return
         }
-        guard PlusPerfectMath.shouldReveal(mode: mode, heldOrientation: orientation) else { return }
+        guard PlusPerfectMath.shouldReveal(mode: mode, position: position) else { return }
         hapticGenerator.impactOccurred(intensity: 1.0)
         handler()
     }

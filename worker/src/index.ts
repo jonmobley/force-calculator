@@ -1,18 +1,29 @@
 /**
- * Force calculator configuration service.
+ * Force calculator configuration and live-peek service.
  *
  * The App Clip runs on a spectator's device and cannot see the performer's
  * settings, so it fetches them here at launch. The performer's app publishes
  * settings whenever they change, which lets a written NFC tag or printed QR code
  * stay valid forever instead of freezing a snapshot of the settings.
  *
+ * Live peek runs the same channel in reverse: when the performer enables it, the
+ * clip reports the number the spectator is typing so the performer's app can read
+ * it back. Reads and writes are deliberately mirror images of the config route:
+ * the clip writes the peek without a token (it can never hold one), and only the
+ * performer, who holds the write token, may read it back.
+ *
  *   GET  /v1/config?id=default   -> current settings, readable by the App Clip
  *   PUT  /v1/config?id=default   -> replace settings, requires the write token
+ *   PUT  /v1/peek?id=default     -> report the spectator's number, no token
+ *   GET  /v1/peek?id=default     -> latest reported number, requires the token
  *   GET  /health                 -> liveness probe
  */
 
 /** Largest accepted settings document. The real payload is a few hundred bytes. */
 const MAX_PAYLOAD_BYTES = 8 * 1024;
+
+/** A display value is at most nine digits plus grouping, sign, and a decimal. */
+const MAX_PEEK_VALUE_LENGTH = 64;
 
 const DEFAULT_ID = "default";
 
@@ -32,7 +43,7 @@ export default {
       return json({ ok: true });
     }
 
-    if (url.pathname !== "/v1/config") {
+    if (url.pathname !== "/v1/config" && url.pathname !== "/v1/peek") {
       return problem(404, "Not found");
     }
 
@@ -41,13 +52,26 @@ export default {
       return problem(400, "Invalid id");
     }
 
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: corsHeaders() });
+    }
+
+    if (url.pathname === "/v1/peek") {
+      switch (request.method) {
+        case "GET":
+          return readPeek(request, env, id);
+        case "PUT":
+          return writePeek(request, env, id);
+        default:
+          return problem(405, "Method not allowed");
+      }
+    }
+
     switch (request.method) {
       case "GET":
         return readConfig(env, id);
       case "PUT":
         return writeConfig(request, env, id);
-      case "OPTIONS":
-        return new Response(null, { status: 204, headers: corsHeaders() });
       default:
         return problem(405, "Method not allowed");
     }
@@ -109,10 +133,71 @@ async function writeConfig(
   return new Response(null, { status: 204, headers: corsHeaders() });
 }
 
+// MARK: - Peek
+
 /**
- * Compares the bearer token in constant time so a timing signal cannot be used
- * to recover it one byte at a time.
+ * Returns the latest number the spectator typed. Guarded by the write token so
+ * only the performer can read it: the value is short-lived and low-value, but it
+ * is still the spectator's input and should not be readable by a guessed id.
  */
+async function readPeek(
+  request: Request,
+  env: Env,
+  id: string,
+): Promise<Response> {
+  if (!isAuthorized(request, env)) {
+    return problem(401, "Unauthorized");
+  }
+
+  const row = await env.DB.prepare(
+    "SELECT value, updated_at FROM peek WHERE id = ?",
+  )
+    .bind(id)
+    .first<{ value: string; updated_at: number }>();
+
+  if (!row) {
+    return problem(404, "No peek reported yet");
+  }
+
+  return json({ value: row.value, updatedAt: row.updated_at });
+}
+
+/**
+ * Records the spectator's current number. Left unauthenticated on purpose: the
+ * clip that sends it can never hold the write token. Only a single short value is
+ * stored per performer, and each write overwrites the last, so nothing meaningful
+ * accumulates even if the endpoint is hit directly.
+ */
+async function writePeek(
+  request: Request,
+  env: Env,
+  id: string,
+): Promise<Response> {
+  const body = await request.text();
+  if (body.length > MAX_PAYLOAD_BYTES) {
+    return problem(413, "Peek too large");
+  }
+
+  let value: unknown;
+  try {
+    value = (JSON.parse(body) as { value?: unknown }).value;
+  } catch {
+    return problem(400, "Body must be JSON");
+  }
+
+  if (typeof value !== "string" || value.length === 0 || value.length > MAX_PEEK_VALUE_LENGTH) {
+    return problem(400, "Invalid peek value");
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO peek (id, value, updated_at) VALUES (?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+  )
+    .bind(id, value, Date.now())
+    .run();
+
+  return new Response(null, { status: 204, headers: corsHeaders() });
+}
 function isAuthorized(request: Request, env: Env): boolean {
   const header = request.headers.get("authorization") ?? "";
   const prefix = "Bearer ";
