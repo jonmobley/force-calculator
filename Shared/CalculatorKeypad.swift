@@ -20,7 +20,11 @@ public struct CalculatorKeypad: View {
     /// 393pt-wide screen against the stock 85.3pt.
     private static let keyGap: CGFloat = 7
     private static let sideMargin: CGFloat = 15
-    private static let bottomMargin: CGFloat = 34
+
+    /// Sits on top of the bottom safe area rather than replacing it. The home indicator
+    /// already supplies the clearance on most iPhones, so this only needs to keep the
+    /// bottom row off the edge on devices that have no indicator at all.
+    private static let bottomMargin: CGFloat = 8
 
     private static let neutral = Color(hex: "5e5e5e")
     private static let neutralPressed = Color(hex: "8c8c8c")
