@@ -1,5 +1,36 @@
 import SwiftUI
 
+/// The hairline rim the stock iOS keys carry. It reads as a lit edge rather than a
+/// drawn outline: brightest along the top where the light falls, almost gone by the
+/// lower middle, then lifting slightly at the very bottom the way a glass edge picks
+/// up bounce from below.
+enum CalculatorKeyRim {
+    static let width: CGFloat = 1
+
+    static let gradient = LinearGradient(
+        stops: [
+            .init(color: .white.opacity(0.30), location: 0),
+            .init(color: .white.opacity(0.10), location: 0.45),
+            .init(color: .white.opacity(0.04), location: 0.72),
+            .init(color: .white.opacity(0.12), location: 1)
+        ],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+}
+
+extension View {
+    /// Fills a round key and edges it with the glass rim, so every key gets the same
+    /// treatment from one place.
+    func calculatorKeySurface(fill: Color) -> some View {
+        background(fill)
+            .clipShape(Circle())
+            .overlay(
+                Circle().strokeBorder(CalculatorKeyRim.gradient, lineWidth: CalculatorKeyRim.width)
+            )
+    }
+}
+
 /// Round key with a text label.
 ///
 /// Lives here rather than in each target because the host app and the App Clip
@@ -37,8 +68,7 @@ public struct NewCalculatorButton: View {
                 .foregroundColor(titleColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .background(isPressed ? pressedBackgroundColor : backgroundColor)
-                .cornerRadius(1000)
+                .calculatorKeySurface(fill: isPressed ? pressedBackgroundColor : backgroundColor)
         }
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
             isPressed = pressing
@@ -80,8 +110,7 @@ public struct NewIconCalculatorButton: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .background(isPressed ? pressedBackgroundColor : backgroundColor)
-                .cornerRadius(1000)
+                .calculatorKeySurface(fill: isPressed ? pressedBackgroundColor : backgroundColor)
         }
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
             isPressed = pressing

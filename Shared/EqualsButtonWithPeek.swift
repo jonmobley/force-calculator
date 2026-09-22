@@ -25,8 +25,9 @@ public struct EqualsButtonWithPeek: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .background(isPressed ? settings.buttonTheme.pressedColorValue : settings.buttonTheme.color)
-                .cornerRadius(1000)
+                .calculatorKeySurface(
+                    fill: isPressed ? settings.buttonTheme.pressedColorValue : settings.buttonTheme.color
+                )
         }
         .simultaneousGesture(pressGesture)
     }
