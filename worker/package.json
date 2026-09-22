@@ -1,0 +1,20 @@
+{
+  "name": "force-config-worker",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Serves Force calculator settings to the App Clip so written NFC tags and QR codes never go stale.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "wrangler check",
+    "types": "wrangler types",
+    "typecheck": "tsc --noEmit",
+    "migrate": "wrangler d1 migrations apply force-config --remote",
+    "migrate:local": "wrangler d1 migrations apply force-config --local",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "wrangler": "^4.42.0"
+  }
+}

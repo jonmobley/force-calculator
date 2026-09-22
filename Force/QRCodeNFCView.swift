@@ -15,9 +15,11 @@ struct QRCodeNFCView: View {
         debugLog("📡 QRCodeNFCView: Initializing (no work done yet)")
     }
     
+    /// Stable invocation URL. Settings travel through `ForceConfigService`, so
+    /// this value never changes and a written sticker never goes stale.
     private var appClipURL: String {
-        let url = AppClipQuery(settings: settings).url().absoluteString
-        debugLog("🔗 Generated App Clip URL: \(url)")
+        let url = AppClipQuery.stableURL().absoluteString
+        debugLog("🔗 App Clip URL: \(url)")
         return url
     }
     

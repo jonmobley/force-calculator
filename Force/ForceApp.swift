@@ -17,6 +17,7 @@ struct ForceApp: App {
     @State private var settings = CalculatorSettings()
     @State private var isReady = false
     @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var configPublisher = ForceConfigPublisher()
     
     init() {
         debugLog("🚀🚀🚀 ForceApp: Application Starting 🚀🚀🚀")
@@ -28,6 +29,7 @@ struct ForceApp: App {
             Group {
                 if isReady {
                     ScreenshotModeView(settings: settings)
+                        .environmentObject(configPublisher)
                 } else {
                     // Show loading while settings load
                     Color.black
@@ -36,6 +38,7 @@ struct ForceApp: App {
                             // Load settings synchronously on first appear
                             settings.loadSettings()
                             settings.beginAutosave()
+                            configPublisher.start(observing: settings)
                             isReady = true
                         }
                 }

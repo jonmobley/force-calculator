@@ -3,7 +3,7 @@ import ForceShared
 
 final class ForceLogicTests: XCTestCase {
     func testForceAppearsOnlyAfterActivationCount() {
-        var count = 0
+        let count = 0
         let first = ForceActivation.advance(calculated: 4, forceCount: count, activationCount: 3, forceValue: 99)
         XCTAssertEqual(first.result, 4)
         XCTAssertEqual(first.forceCount, 1)
@@ -155,6 +155,84 @@ final class ForceLogicTests: XCTestCase {
         let reloaded = CalculatorSettings()
         reloaded.loadSettings()
         XCTAssertEqual(reloaded.forceNumber, 5678)
+    }
+
+    /// The whole point of the config service: a written sticker must keep working
+    /// after the performer edits their setup.
+    func testStableURLDoesNotChangeWhenSettingsChange() {
+        let settings = CalculatorSettings()
+        settings.forceNumber = 1111
+        settings.magicTrickMode = .forceNumber
+        settings.buttonTheme = .blue
+        let before = AppClipQuery.stableURL()
+
+        settings.forceNumber = 9999
+        settings.magicTrickMode = .exactDateTime
+        settings.buttonTheme = .orange
+        XCTAssertEqual(AppClipQuery.stableURL(), before)
+    }
+
+    func testStableURLCarriesNoSettings() {
+        let items = URLComponents(url: AppClipQuery.stableURL(), resolvingAgainstBaseURL: false)?
+            .queryItems ?? []
+        let names = Set(items.map(\.name))
+
+        XCTAssertEqual(names, ["p", "id"])
+        for leaked in ["fn", "ac", "mt", "dt", "bt", "pp", "sws"] {
+            XCTAssertFalse(names.contains(leaked), "\(leaked) must not be written onto the tag")
+        }
+        XCTAssertEqual(
+            items.first { $0.name == "p" }?.value,
+            AppClipQuery.clipBundleIdentifier
+        )
+    }
+
+    /// Stickers written before the config service existed still carry settings,
+    /// and must keep working.
+    func testLegacyURLStillCarriesSettings() {
+        let settings = CalculatorSettings()
+        settings.forceNumber = 4242
+        settings.magicTrickMode = .exactDateTime
+
+        let names = Set(
+            URLComponents(url: AppClipQuery(settings: settings).url(), resolvingAgainstBaseURL: false)?
+                .queryItems?.map(\.name) ?? []
+        )
+        XCTAssertTrue(names.isSuperset(of: ["p", "fn", "ac", "mt", "dt", "bt", "pp", "sws"]))
+    }
+
+    func testSnapshotIsDetachedFromLaterEdits() {
+        let settings = CalculatorSettings()
+        settings.forceNumber = 100
+        settings.buttonTheme = .green
+
+        let snapshot = settings.snapshot()
+        settings.forceNumber = 200
+        settings.buttonTheme = .pink
+
+        XCTAssertEqual(snapshot.forceNumber, 100)
+        XCTAssertEqual(snapshot.buttonTheme, .green)
+    }
+
+    /// The clip decodes exactly what the app publishes, so the two must agree.
+    func testPublishedPayloadDecodesBackIntoSettings() throws {
+        let settings = CalculatorSettings()
+        settings.forceNumber = 8675309
+        settings.activationCount = 5
+        settings.magicTrickMode = .exactDateTime
+        settings.dateTimeFormat = .xxDDMMYY
+        settings.buttonTheme = .purple
+        settings.plusPerfectEnabled = true
+
+        let payload = try JSONEncoder().encode(settings.snapshot())
+        let decoded = try JSONDecoder().decode(CalculatorSettings.self, from: payload)
+
+        XCTAssertEqual(decoded.forceNumber, 8675309)
+        XCTAssertEqual(decoded.activationCount, 5)
+        XCTAssertEqual(decoded.magicTrickMode, .exactDateTime)
+        XCTAssertEqual(decoded.dateTimeFormat, .xxDDMMYY)
+        XCTAssertEqual(decoded.buttonTheme, .purple)
+        XCTAssertTrue(decoded.plusPerfectEnabled)
     }
 
     private func makeDate(hour: Int, minute: Int) -> (date: Date, calendar: Calendar) {

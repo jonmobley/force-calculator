@@ -27,7 +27,27 @@ public struct AppClipQuery: Equatable {
 
     // MARK: - URL
 
+    /// Invocation URL that carries no settings.
+    ///
+    /// Preferred for NFC stickers and printed QR codes: the value never changes,
+    /// so a tag written once stays correct after the performer edits their setup.
+    /// The clip reads the live settings from `ForceConfigService` instead. As a
+    /// side benefit the force number is no longer written onto the tag in plain
+    /// text where any tag reader could see it.
+    public static func stableURL() -> URL {
+        var components = URLComponents(url: invocation, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "p", value: clipBundleIdentifier),
+            URLQueryItem(name: "id", value: ForceConfigService.performerID)
+        ]
+        return components.url!
+    }
+
     /// Builds `https://appclip.apple.com/id` with `p`, `fn`, `ac`, `mt`, `dt`, `bt`, `pp`, and `sws`.
+    ///
+    /// Retained so stickers written before the config service existed keep
+    /// working: the clip still reads these parameters, then overrides them with
+    /// live settings when the service is reachable.
     public func url() -> URL {
         var components = URLComponents(url: Self.invocation, resolvingAgainstBaseURL: false)!
         components.queryItems = [

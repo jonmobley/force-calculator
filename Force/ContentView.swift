@@ -4,6 +4,7 @@ import ForceShared
 
 struct ContentView: View {
     @EnvironmentObject private var settings: CalculatorSettings
+    @EnvironmentObject private var configPublisher: ForceConfigPublisher
     @State private var forceNumberText = ""
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var backgroundImage: UIImage?
@@ -22,6 +23,7 @@ struct ContentView: View {
                         backgroundImage: backgroundImage,
                         onDelete: deleteBackgroundImage
                     )
+                    ForceSyncSection(publisher: configPublisher)
                     Section {
                         ForceQRCodeButton(tint: themeColor, action: { showQRCodeView = true })
                     } header: {
@@ -120,6 +122,8 @@ struct LazyQRCodeView: View {
 
 struct ContentView_Previews: PreviewProvider {
     static var previews: some View {
-        ContentView().environmentObject(CalculatorSettings())
+        ContentView()
+            .environmentObject(CalculatorSettings())
+            .environmentObject(ForceConfigPublisher())
     }
 }

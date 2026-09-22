@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "force-config",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-15",
+  "workers_dev": true,
+  // The published config is readable by anyone who knows the URL, so keep the
+  // number of public hostnames to one.
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  // D1 rather than KV: KV reads can serve up to 60s stale from edge cache, and a
+  // stale force number mid-performance would silently break the trick.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "force-config",
+      "database_id": "4c60be38-8464-4f27-b39c-65e7c605f3e2",
+      "migrations_dir": "./migrations"
+    }
+  ]
+}
