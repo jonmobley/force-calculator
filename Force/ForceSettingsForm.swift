@@ -5,6 +5,7 @@ import ForceShared
 struct ForceCalculatorSettingsSection: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @Binding var forceNumberText: String
+    @State private var isEditingForceNumber = false
 
     private var themeColor: Color { settings.buttonTheme.color }
 
@@ -50,15 +51,27 @@ struct ForceCalculatorSettingsSection: View {
     }
 
     private var forceNumberField: some View {
-        HStack {
-            Text("Force Number")
-            Spacer()
-            TextField("Enter number", text: $forceNumberText)
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.trailing)
-                .onChange(of: forceNumberText) { _, newValue in
-                    updateForceNumber(newValue)
-                }
+        Button {
+            isEditingForceNumber = true
+        } label: {
+            HStack {
+                Text("Force Number")
+                    .foregroundStyle(.primary)
+                Spacer()
+                Text(forceNumberText.isEmpty ? "Not set" : forceNumberText)
+                    .foregroundStyle(.secondary)
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .sheet(isPresented: $isEditingForceNumber) {
+            ForceNumberEditor(
+                currentText: forceNumberText,
+                tint: themeColor,
+                onCommit: updateForceNumber
+            )
         }
     }
 
@@ -90,7 +103,7 @@ struct ForceCalculatorSettingsSection: View {
     private var plusPerfectToggle: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle("Plus Perfect", isOn: $settings.plusPerfectEnabled)
-            Text("Upside-down + arms the trick. Upright + adds normally.")
+            Text("Press +, then turn the phone over and back. Without the turn, + adds normally.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -106,12 +119,8 @@ struct ForceCalculatorSettingsSection: View {
     }
 
     private func updateForceNumber(_ newValue: String) {
-        let filtered = newValue.filter(\.isNumber)
-        if filtered != newValue {
-            forceNumberText = filtered
-            return
-        }
-        guard let number = Int(filtered) else { return }
+        guard let number = Int(newValue.filter(\.isNumber)) else { return }
+        forceNumberText = String(number)
         settings.forceNumber = number
     }
 }

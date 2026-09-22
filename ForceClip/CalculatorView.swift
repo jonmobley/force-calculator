@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 import ForceShared
 
 struct CalculatorView: View {
@@ -14,35 +13,41 @@ struct CalculatorView: View {
     @State private var lastMinuteChecked: Int?
     @State private var hasUpdatedForMinuteChange = false
     @State private var showForceNumber = false
-    @State private var plusPerfectMode: PlusPerfectState = .inactive
-    @State private var savedNumberForPlusPerfect: Double = 0
+    @State private var showModeText = false
+    @State private var modeHideWorkItem: DispatchWorkItem?
+
+    /// How long the mode badge stays visible after a reveal or a mode change.
+    private let modeRevealDuration: TimeInterval = 3
+
     @State private var lastOperationWasEquals = false
     @StateObject private var plusPerfectHandler = PlusPerfectHandler()
-    @State private var modeSync: AnyCancellable?
     @State private var lastOperation: CalculatorOperation?
     @State private var lastOperand: Double = 0
 
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                CalculatorDisplayArea(
+                CalculatorReadout(
                     display: display,
                     geometry: geometry,
+                    themeColor: settings.buttonTheme.color,
                     showForceNumber: showForceNumber,
-                    forceNumber: settings.forceNumber
+                    forceNumber: settings.forceNumber,
+                    showModeText: showModeText,
+                    modeName: settings.magicTrickMode.rawValue,
+                    onToggleMode: toggleMode,
+                    onRevealMode: revealMode
                 )
-                CalculatorButtonGridClip(
+                CalculatorKeypad(
                     settings: settings,
-                    showBackButton: display != "0",
+                    showForceNumber: $showForceNumber,
                     digitAction: digitPressed,
                     decimalAction: decimalPressed,
                     backspaceAction: backspace,
                     clearAction: clearAll,
                     toggleSignAction: toggleSign,
                     operationAction: performOperation,
-                    equalsAction: equals,
-                    toggleModeAction: toggleMode,
-                    showForceNumber: $showForceNumber
+                    equalsAction: equals
                 )
             }
         }
@@ -54,14 +59,31 @@ struct CalculatorView: View {
     private func startSession() {
         forceCount = 0
         plusPerfectHandler.startMonitoring { calculatePerfectAddend() }
-        modeSync = plusPerfectHandler.$mode
-            .receive(on: DispatchQueue.main)
-            .sink { plusPerfectMode = $0 }
     }
 
     private func stopSession() {
         plusPerfectHandler.stopMonitoring()
-        modeSync?.cancel()
+        modeHideWorkItem?.cancel()
+    }
+
+    /// Shows the hidden mode badge long enough to read it or tap it.
+    private func revealMode() {
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showModeText = true
+        }
+        scheduleModeHide()
+    }
+
+    /// Restarts the auto-hide countdown so a tap does not cut the reveal short.
+    private func scheduleModeHide() {
+        modeHideWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                showModeText = false
+            }
+        }
+        modeHideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + modeRevealDuration, execute: workItem)
     }
 
     private func digitPressed(_ digit: String) {
@@ -70,7 +92,7 @@ struct CalculatorView: View {
             display: &display,
             userIsTyping: &userIsTyping,
             lastOperationWasEquals: &lastOperationWasEquals,
-            plusPerfectMode: plusPerfectMode
+            plusPerfectMode: plusPerfectHandler.mode
         )
     }
 
@@ -79,7 +101,7 @@ struct CalculatorView: View {
             display: &display,
             userIsTyping: &userIsTyping,
             lastOperationWasEquals: &lastOperationWasEquals,
-            plusPerfectMode: plusPerfectMode
+            plusPerfectMode: plusPerfectHandler.mode
         )
     }
 
@@ -87,7 +109,7 @@ struct CalculatorView: View {
         CalculatorOperations.backspace(
             display: &display,
             userIsTyping: &userIsTyping,
-            plusPerfectMode: plusPerfectMode
+            plusPerfectMode: plusPerfectHandler.mode
         )
     }
 
@@ -101,22 +123,22 @@ struct CalculatorView: View {
             forceCount: &forceCount,
             lastMinuteChecked: &lastMinuteChecked,
             hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange,
-            plusPerfectMode: &plusPerfectMode,
-            savedNumberForPlusPerfect: &savedNumberForPlusPerfect,
+            plusPerfectHandler: plusPerfectHandler,
             lastOperationWasEquals: &lastOperationWasEquals,
             lastOperation: &lastOperation,
             lastOperand: &lastOperand
         )
-        plusPerfectHandler.mode = .inactive
     }
 
     private func toggleSign() {
-        CalculatorOperations.toggleSign(display: &display, plusPerfectMode: plusPerfectMode)
+        CalculatorOperations.toggleSign(display: &display, plusPerfectMode: plusPerfectHandler.mode)
     }
 
-    /// Changes Force versus Date/Time for this clip session only.
+    /// Changes Force versus Date/Time for this clip session only. The performer's
+    /// published settings are untouched.
     private func toggleMode() {
         settings.magicTrickMode = settings.magicTrickMode == .forceNumber ? .exactDateTime : .forceNumber
+        scheduleModeHide()
     }
 
     private func performOperation(_ op: CalculatorOperation) {
@@ -129,12 +151,9 @@ struct CalculatorView: View {
             lastButtonWasOperation: &lastButtonWasOperation,
             lastOperationWasEquals: &lastOperationWasEquals,
             settings: settings,
-            plusPerfectMode: &plusPerfectMode,
-            savedNumberForPlusPerfect: &savedNumberForPlusPerfect,
             plusPerfectHandler: plusPerfectHandler,
             equalsAction: equals
         )
-        plusPerfectMode = plusPerfectHandler.mode
     }
 
     private func equals() {
@@ -150,7 +169,7 @@ struct CalculatorView: View {
             lastMinuteChecked: &lastMinuteChecked,
             hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange,
             settings: settings,
-            plusPerfectMode: &plusPerfectMode,
+            plusPerfectHandler: plusPerfectHandler,
             lastOperation: &lastOperation,
             lastOperand: &lastOperand
         )
@@ -165,6 +184,5 @@ struct CalculatorView: View {
             userIsTyping: &userIsTyping,
             settings: settings
         )
-        plusPerfectMode = plusPerfectHandler.mode
     }
 }

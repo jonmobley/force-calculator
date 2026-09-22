@@ -2,9 +2,10 @@ import Foundation
 
 public enum PlusPerfectState {
     case inactive
-    case activated
-    case waitingForFlip
-    case upsideDown
+    /// Plus is pending as an ordinary addition. Turning the phone over now arms the trick.
+    case pendingAdd
+    /// The phone was turned over while plus was pending; waiting for it to come back upright.
+    case armed
     case calculated
 }
 
@@ -22,7 +23,7 @@ public struct CalculatorOperations {
         plusPerfectMode: PlusPerfectState
     ) {
         lastOperationWasEquals = false
-        if plusPerfectMode == .upsideDown { return }
+        if plusPerfectMode == .armed { return }
         let digitCount = display.filter { $0.isNumber }.count
         if userIsTyping {
             guard digitCount < 9 else { return }
@@ -40,7 +41,7 @@ public struct CalculatorOperations {
         plusPerfectMode: PlusPerfectState
     ) {
         lastOperationWasEquals = false
-        if plusPerfectMode == .upsideDown || display.contains(".") { return }
+        if plusPerfectMode == .armed || display.contains(".") { return }
         if userIsTyping {
             display += "."
         } else {
@@ -54,7 +55,7 @@ public struct CalculatorOperations {
         userIsTyping: inout Bool,
         plusPerfectMode: PlusPerfectState
     ) {
-        if plusPerfectMode == .upsideDown { return }
+        if plusPerfectMode == .armed { return }
         let cleaned = display.replacingOccurrences(of: ",", with: "")
         if cleaned.count > 1 {
             display = CalculatorFormatter.formatDisplay(String(cleaned.dropLast()))
@@ -65,7 +66,7 @@ public struct CalculatorOperations {
     }
 
     public static func toggleSign(display: inout String, plusPerfectMode: PlusPerfectState) {
-        if plusPerfectMode == .upsideDown || display == "0" { return }
+        if plusPerfectMode == .armed || display == "0" { return }
         if display.hasPrefix("-") {
             display.removeFirst()
         } else {
@@ -88,8 +89,7 @@ public struct CalculatorOperations {
         forceCount: inout Int,
         lastMinuteChecked: inout Int?,
         hasUpdatedForMinuteChange: inout Bool,
-        plusPerfectMode: inout PlusPerfectState,
-        savedNumberForPlusPerfect: inout Double,
+        plusPerfectHandler: PlusPerfectHandler,
         lastOperationWasEquals: inout Bool,
         lastOperation: inout CalculatorOperation?,
         lastOperand: inout Double
@@ -102,8 +102,7 @@ public struct CalculatorOperations {
         forceCount = 0
         lastMinuteChecked = nil
         hasUpdatedForMinuteChange = false
-        plusPerfectMode = .inactive
-        savedNumberForPlusPerfect = 0
+        plusPerfectHandler.reset()
         lastOperationWasEquals = false
         lastOperation = nil
         lastOperand = 0

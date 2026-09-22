@@ -1,6 +1,5 @@
 import SwiftUI
 import Foundation
-import Combine
 import ForceShared
 
 struct CalculatorView: View {
@@ -23,13 +22,9 @@ struct CalculatorView: View {
     /// How long the mode badge stays visible after a reveal or a mode change.
     private let modeRevealDuration: TimeInterval = 3
     
-    // Plus Perfect state
-    @State private var plusPerfectMode: PlusPerfectState = .inactive
-    @State private var savedNumberForPlusPerfect: Double = 0
+    // Plus Perfect state lives on the handler, which orientation changes drive directly.
     @State private var lastOperationWasEquals = false
-    @State private var isUpsideDown = false
     @StateObject private var plusPerfectHandler = PlusPerfectHandler()
-    @State private var modeSyncCancellable: AnyCancellable?
     
     // For repeat equals functionality
     @State private var lastOperation: CalculatorOperation? = nil
@@ -74,31 +69,14 @@ struct CalculatorView: View {
         .onAppear {
             debugLog("🧮 CalculatorView: onAppear called")
             forceCount = 0
-            
-            // Always start monitoring device orientation for Plus Perfect
-            // This allows detection when + is pressed while upside down
             debugLog("🎭 Plus Perfect: Starting orientation monitoring (enabled: \(settings.plusPerfectEnabled))")
             plusPerfectHandler.startMonitoring {
                 calculatePerfectAddend()
             }
-            
-            // Observe handler's mode changes and sync to view state
-            // This ensures view state stays in sync with handler state
-            // Note: No need for [weak self] since CalculatorView is a struct, not a class
-            modeSyncCancellable = plusPerfectHandler.$mode
-                .receive(on: DispatchQueue.main)
-                .sink { newMode in
-                    if plusPerfectMode != newMode {
-                        debugLog("🔄 Syncing Plus Perfect mode: \(plusPerfectMode) → \(newMode)")
-                        plusPerfectMode = newMode
-                    }
-                }
-            
             debugLog("✅ CalculatorView: onAppear completed")
         }
         .onDisappear {
             plusPerfectHandler.stopMonitoring()
-            modeSyncCancellable?.cancel()
             modeHideWorkItem?.cancel()
         }
     }
@@ -111,7 +89,7 @@ struct CalculatorView: View {
             display: &display,
             userIsTyping: &userIsTyping,
             lastOperationWasEquals: &lastOperationWasEquals,
-            plusPerfectMode: plusPerfectMode
+            plusPerfectMode: plusPerfectHandler.mode
         )
         hasEntryToClear = true
     }
@@ -121,7 +99,7 @@ struct CalculatorView: View {
             display: &display,
             userIsTyping: &userIsTyping,
             lastOperationWasEquals: &lastOperationWasEquals,
-            plusPerfectMode: plusPerfectMode
+            plusPerfectMode: plusPerfectHandler.mode
         )
         hasEntryToClear = true
     }
@@ -136,13 +114,11 @@ struct CalculatorView: View {
             forceCount: &forceCount,
             lastMinuteChecked: &lastMinuteChecked,
             hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange,
-            plusPerfectMode: &plusPerfectMode,
-            savedNumberForPlusPerfect: &savedNumberForPlusPerfect,
+            plusPerfectHandler: plusPerfectHandler,
             lastOperationWasEquals: &lastOperationWasEquals,
             lastOperation: &lastOperation,
             lastOperand: &lastOperand
         )
-        plusPerfectHandler.mode = .inactive
         hasEntryToClear = false
     }
     
@@ -158,7 +134,7 @@ struct CalculatorView: View {
         CalculatorOperations.backspace(
             display: &display,
             userIsTyping: &userIsTyping,
-            plusPerfectMode: plusPerfectMode
+            plusPerfectMode: plusPerfectHandler.mode
         )
         // Update hasEntryToClear based on whether display is "0"
         hasEntryToClear = (display != "0")
@@ -167,7 +143,7 @@ struct CalculatorView: View {
     private func toggleSign() {
         CalculatorOperations.toggleSign(
             display: &display,
-            plusPerfectMode: plusPerfectMode
+            plusPerfectMode: plusPerfectHandler.mode
         )
     }
     
@@ -208,13 +184,9 @@ struct CalculatorView: View {
             lastButtonWasOperation: &lastButtonWasOperation,
             lastOperationWasEquals: &lastOperationWasEquals,
             settings: settings,
-            plusPerfectMode: &plusPerfectMode,
-            savedNumberForPlusPerfect: &savedNumberForPlusPerfect,
             plusPerfectHandler: plusPerfectHandler,
             equalsAction: equals
         )
-        // Sync mode after operation
-        plusPerfectMode = plusPerfectHandler.mode
         // After operation, there's no entry to clear (result is shown)
         hasEntryToClear = false
     }
@@ -232,7 +204,7 @@ struct CalculatorView: View {
             lastMinuteChecked: &lastMinuteChecked,
             hasUpdatedForMinuteChange: &hasUpdatedForMinuteChange,
             settings: settings,
-            plusPerfectMode: &plusPerfectMode,
+            plusPerfectHandler: plusPerfectHandler,
             lastOperation: &lastOperation,
             lastOperand: &lastOperand
         )
@@ -249,6 +221,5 @@ struct CalculatorView: View {
             userIsTyping: &userIsTyping,
             settings: settings
         )
-        plusPerfectMode = plusPerfectHandler.mode
     }
 }

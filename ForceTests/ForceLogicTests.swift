@@ -44,12 +44,41 @@ final class ForceLogicTests: XCTestCase {
         XCTAssertEqual(DateTimeNumber.format(afternoon.date, format: .xxDDMMYY, calendar: afternoon.calendar), 105_020_126)
     }
 
-    func testPlusPerfectAddendAndArming() {
+    func testPlusPerfectAddend() {
         XCTAssertEqual(PlusPerfectMath.perfectAddend(savedNumber: 100, forceNumber: 4_556_325), 4_556_225)
-        XCTAssertTrue(PlusPerfectMath.shouldArm(plusPerfectEnabled: true, isAdd: true, isUpsideDown: true))
-        XCTAssertFalse(PlusPerfectMath.shouldArm(plusPerfectEnabled: true, isAdd: true, isUpsideDown: false))
-        XCTAssertFalse(PlusPerfectMath.shouldArm(plusPerfectEnabled: false, isAdd: true, isUpsideDown: true))
-        XCTAssertFalse(PlusPerfectMath.shouldArm(plusPerfectEnabled: true, isAdd: false, isUpsideDown: true))
+    }
+
+    func testPlusPerfectOnlyPlusLeavesTheTrickPending() {
+        XCTAssertTrue(PlusPerfectMath.shouldMarkPendingAdd(plusPerfectEnabled: true, isAdd: true))
+        XCTAssertFalse(PlusPerfectMath.shouldMarkPendingAdd(plusPerfectEnabled: true, isAdd: false))
+        XCTAssertFalse(PlusPerfectMath.shouldMarkPendingAdd(plusPerfectEnabled: false, isAdd: true))
+    }
+
+    func testPlusPerfectArmsOnlyWhenTurnedOverWithPlusPending() {
+        XCTAssertTrue(PlusPerfectMath.shouldArm(mode: .pendingAdd, heldOrientation: .portraitUpsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .pendingAdd, heldOrientation: .portrait))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .pendingAdd, heldOrientation: .landscapeLeft))
+        // No pending plus means turning the phone over does nothing at all.
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .inactive, heldOrientation: .portraitUpsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .armed, heldOrientation: .portraitUpsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldArm(mode: .calculated, heldOrientation: .portraitUpsideDown))
+    }
+
+    func testPlusPerfectIgnoresFlatOrientations() {
+        XCTAssertEqual(PlusPerfectMath.heldOrientation(.portraitUpsideDown), .portraitUpsideDown)
+        XCTAssertEqual(PlusPerfectMath.heldOrientation(.landscapeLeft), .landscapeLeft)
+        XCTAssertNil(PlusPerfectMath.heldOrientation(.faceUp))
+        XCTAssertNil(PlusPerfectMath.heldOrientation(.faceDown))
+        XCTAssertNil(PlusPerfectMath.heldOrientation(.unknown))
+    }
+
+    func testPlusPerfectRevealsOnlyOnUprightPortraitWhileArmed() {
+        XCTAssertTrue(PlusPerfectMath.shouldReveal(mode: .armed, heldOrientation: .portrait))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .armed, heldOrientation: .landscapeRight))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .armed, heldOrientation: .portraitUpsideDown))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .inactive, heldOrientation: .portrait))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .pendingAdd, heldOrientation: .portrait))
+        XCTAssertFalse(PlusPerfectMath.shouldReveal(mode: .calculated, heldOrientation: .portrait))
     }
 
     func testAppClipURLRoundTrip() {

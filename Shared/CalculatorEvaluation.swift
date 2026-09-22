@@ -10,22 +10,12 @@ extension CalculatorOperations {
         lastButtonWasOperation: inout Bool,
         lastOperationWasEquals: inout Bool,
         settings: CalculatorSettings,
-        plusPerfectMode: inout PlusPerfectState,
-        savedNumberForPlusPerfect: inout Double,
         plusPerfectHandler: PlusPerfectHandler,
         equalsAction: () -> Void
     ) {
-        if armPlusPerfect(
-            op,
-            display: display,
-            lastOperationWasEquals: &lastOperationWasEquals,
-            settings: settings,
-            plusPerfectMode: &plusPerfectMode,
-            savedNumberForPlusPerfect: &savedNumberForPlusPerfect,
-            plusPerfectHandler: plusPerfectHandler
-        ) {
-            return
-        }
+        // The keypad is inert while armed, so a stray tap cannot disturb the trick.
+        // Clear is the way out.
+        guard plusPerfectHandler.mode != .armed else { return }
         lastOperationWasEquals = false
         if operation != nil, userIsTyping {
             equalsAction()
@@ -38,6 +28,12 @@ extension CalculatorOperations {
             display = CalculatorFormatter.formatResult(previousNumber / 100)
             operation = nil
         }
+        updatePlusPerfect(
+            op,
+            operand: previousNumber,
+            settings: settings,
+            plusPerfectHandler: plusPerfectHandler
+        )
     }
 
     public static func equals(
@@ -52,15 +48,18 @@ extension CalculatorOperations {
         lastMinuteChecked: inout Int?,
         hasUpdatedForMinuteChange: inout Bool,
         settings: CalculatorSettings,
-        plusPerfectMode: inout PlusPerfectState,
+        plusPerfectHandler: PlusPerfectHandler,
         lastOperation: inout CalculatorOperation?,
         lastOperand: inout Double
     ) {
-        if plusPerfectMode == .calculated {
-            showPlusPerfectResult(display: &display, settings: settings, plusPerfectMode: &plusPerfectMode)
+        guard plusPerfectHandler.mode != .armed else { return }
+        if plusPerfectHandler.mode == .calculated {
+            showPlusPerfectResult(display: &display, settings: settings, plusPerfectHandler: plusPerfectHandler)
             lastOperationWasEquals = false
             return
         }
+        // The addition is finishing, so a turn of the phone afterwards must not arm anything.
+        plusPerfectHandler.reset()
         guard let currentOp = operation ?? lastOperation else {
             lastOperationWasEquals = true
             return
@@ -135,39 +134,34 @@ extension CalculatorOperations {
 
     // MARK: - Plus Perfect
 
-    private static func armPlusPerfect(
+    /// Plus leaves the trick pending so the phone can be turned over afterwards.
+    /// Every other operation stands the trick down.
+    private static func updatePlusPerfect(
         _ op: CalculatorOperation,
-        display: String,
-        lastOperationWasEquals: inout Bool,
+        operand: Double,
         settings: CalculatorSettings,
-        plusPerfectMode: inout PlusPerfectState,
-        savedNumberForPlusPerfect: inout Double,
         plusPerfectHandler: PlusPerfectHandler
-    ) -> Bool {
-        let shouldArm = PlusPerfectMath.shouldArm(
+    ) {
+        let shouldMarkPending = PlusPerfectMath.shouldMarkPendingAdd(
             plusPerfectEnabled: settings.plusPerfectEnabled,
-            isAdd: op == .add,
-            isUpsideDown: plusPerfectHandler.isUpsideDown
+            isAdd: op == .add
         )
-        guard shouldArm else { return false }
-        let currentNumber = CalculatorFormatter.parseDisplay(display)
-        savedNumberForPlusPerfect = currentNumber
-        plusPerfectHandler.savedNumber = currentNumber
-        plusPerfectHandler.mode = .upsideDown
-        plusPerfectMode = .upsideDown
-        lastOperationWasEquals = false
-        return true
+        guard shouldMarkPending else {
+            plusPerfectHandler.reset()
+            return
+        }
+        plusPerfectHandler.markPendingAdd(operand: operand)
     }
 
     private static func showPlusPerfectResult(
         display: inout String,
         settings: CalculatorSettings,
-        plusPerfectMode: inout PlusPerfectState
+        plusPerfectHandler: PlusPerfectHandler
     ) {
         let forceNumber = settings.magicTrickMode == .forceNumber
             ? Double(settings.forceNumber)
             : Double(settings.getCurrentDateTimeNumber())
         display = CalculatorFormatter.formatResult(forceNumber)
-        plusPerfectMode = .inactive
+        plusPerfectHandler.reset()
     }
 }
