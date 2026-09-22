@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import ForceShared
 
 struct ScreenshotView: View {
     @EnvironmentObject var settings: CalculatorSettings

@@ -1,17 +1,16 @@
 import SwiftUI
+import ForceShared
 
 // MARK: - Button Grid Component
 
 struct CalculatorButtonGrid: View {
     @ObservedObject var settings: CalculatorSettings
     @Binding var showForceNumber: Bool
-    @Binding var showModeText: Bool
     let digitAction: (String) -> Void
     let decimalAction: () -> Void
     let backspaceAction: () -> Void
     let clearAction: () -> Void
     let toggleSignAction: () -> Void
-    let toggleModeAction: () -> Void
     let operationAction: (CalculatorOperation) -> Void
     let equalsAction: () -> Void
     
@@ -151,7 +150,7 @@ struct CalculatorButtonGrid: View {
                     iconName: "icon-plusminus",
                     backgroundColor: Color(hex: "2a2a2c"),
                     pressedBackgroundColor: Color(hex: "727272"),
-                    action: toggleModeAction,
+                    action: toggleSignAction,
                     iconSize: 36
                 )
                 

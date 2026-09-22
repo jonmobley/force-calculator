@@ -1,27 +1,25 @@
 import SwiftUI
+import ForceShared
 
-// MARK: - Display Area
-
+/// Clip readout. There is no menu; a long-press on equals peeks the force number.
 struct CalculatorDisplayArea: View {
     let display: String
     let geometry: GeometryProxy
-    
+    let showForceNumber: Bool
+    let forceNumber: Int
+
     var body: some View {
         VStack {
-            // Menu icon in top left
             HStack {
-                Button(action: { /* Menu action */ }) {
-                    Image("icon-menu")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 24, height: 24)
-                        .foregroundColor(Color(hex: "ff9f0a"))
-                }
-                .padding(.leading, 24)
-                .padding(.top, 20)
                 Spacer()
+                if showForceNumber {
+                    Text("\(forceNumber)")
+                        .font(.system(size: 16))
+                        .foregroundColor(Color.gray.opacity(0.7))
+                        .padding(.trailing, 24)
+                        .padding(.top, 20)
+                }
             }
-            
             Spacer()
             HStack {
                 Spacer()

@@ -1,6 +1,7 @@
 import SwiftUI
 import Foundation
 import Combine
+import ForceShared
 
 struct CalculatorView: View {
     @Environment(\.dismiss) private var dismiss
@@ -40,67 +41,25 @@ struct CalculatorView: View {
     var body: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                // Display Area
-                VStack {
-                    // Menu icon in top left
-                    HStack {
-                        Button(action: { 
-                            debugLog("🔙 Menu button tapped - dismissing calculator")
-                            dismiss() 
-                        }) {
-                            Image("icon-menu")
-                                .renderingMode(.template)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 24, height: 24)
-                                .foregroundColor(settings.buttonTheme.color)
-                        }
-                        .padding(.leading, 24)
-                        .padding(.top, 20)
-                        Spacer()
-                        
-                        // Force number or mode display
-                        if showForceNumber {
-                            Text("\(settings.forceNumber)")
-                                .font(.system(size: 16))
-                                .foregroundColor(Color.gray.opacity(0.7))
-                                .padding(.trailing, 24)
-                                .padding(.top, 20)
-                        } else if showModeText {
-                            Text(settings.magicTrickMode.rawValue)
-                                .font(.system(size: 16))
-                                .foregroundColor(Color.gray.opacity(0.7))
-                                .padding(.trailing, 24)
-                                .padding(.top, 20)
-                        }
-                    }
-                    
-                    Spacer()
-                    HStack {
-                        Spacer()
-                        Text(display)
-                            .font(.custom("SF Pro Display", size: min(geometry.size.width * 0.22, 100)))
-                            .fontWeight(.thin)
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 24)
-                            .minimumScaleFactor(0.5)
-                            .lineLimit(1)
-                    }
-                    .padding(.bottom, 30)
-                }
-                .frame(height: geometry.size.height * 0.35)
-                
-                // Button Grid
+                HostCalculatorDisplay(
+                    display: display,
+                    geometry: geometry,
+                    themeColor: settings.buttonTheme.color,
+                    showForceNumber: showForceNumber,
+                    forceNumber: settings.forceNumber,
+                    showModeText: showModeText,
+                    modeName: settings.magicTrickMode.rawValue,
+                    onDismiss: { dismiss() },
+                    onToggleMode: toggleMode
+                )
                 CalculatorButtonGrid(
                     settings: settings,
                     showForceNumber: $showForceNumber,
-                    showModeText: $showModeText,
                     digitAction: digitPressed,
                     decimalAction: decimalPressed,
                     backspaceAction: backspace,
                     clearAction: hasEntryToClear ? clearEntry : clearAll,
                     toggleSignAction: toggleSign,
-                    toggleModeAction: toggleMode,
                     operationAction: { performOperation($0) },
                     equalsAction: equals
                 )
@@ -109,10 +68,7 @@ struct CalculatorView: View {
         .background(Color.black.ignoresSafeArea())
         .onAppear {
             debugLog("🧮 CalculatorView: onAppear called")
-            debugLog("📊 Loading settings in CalculatorView")
-            settings.loadSettings()
-            debugLog("📊 Settings loaded: forceNumber=\(settings.forceNumber), mode=\(settings.magicTrickMode), plusPerfect=\(settings.plusPerfectEnabled)")
-            forceCount = 0 // Reset force count when calculator appears
+            forceCount = 0
             
             // Always start monitoring device orientation for Plus Perfect
             // This allows detection when + is pressed while upside down
@@ -180,6 +136,7 @@ struct CalculatorView: View {
             lastOperation: &lastOperation,
             lastOperand: &lastOperand
         )
+        plusPerfectHandler.mode = .inactive
         hasEntryToClear = false
     }
     
@@ -212,10 +169,7 @@ struct CalculatorView: View {
         // Toggle between Force Number and Date/Time modes
         settings.magicTrickMode = settings.magicTrickMode == .forceNumber ? .exactDateTime : .forceNumber
         
-        // Save settings
-        Task { @MainActor in
-            SettingsManager.shared.saveSettings(settings)
-        }
+        settings.saveSettings()
         
         // Show mode text feedback
         withAnimation(.easeInOut(duration: 0.2)) {

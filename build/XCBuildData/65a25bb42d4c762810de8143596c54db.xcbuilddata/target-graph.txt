@@ -1,4 +1,0 @@
-Target dependency graph (2 targets)
-Target 'Force' in project 'Force'
-➜ Explicit dependency on target 'ForceClip' in project 'Force'
-Target 'ForceClip' in project 'Force' (no dependencies)

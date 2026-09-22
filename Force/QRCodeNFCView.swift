@@ -1,10 +1,11 @@
 import SwiftUI
 import CoreNFC
+import ForceShared
 
 struct QRCodeNFCView: View {
     @EnvironmentObject var settings: CalculatorSettings
     @State private var qrCodeImage: UIImage?
-    @State private var nfcSession: NFCNDEFReaderSession?
+    @State private var nfcWriter: NFCWriter?
     @State private var showingAlert = false
     @State private var alertMessage = ""
     @State private var isNFCAvailable = false
@@ -14,27 +15,8 @@ struct QRCodeNFCView: View {
         debugLog("📡 QRCodeNFCView: Initializing (no work done yet)")
     }
     
-    // Dynamic App Clip URL with settings parameters
     private var appClipURL: String {
-        var components = URLComponents(string: "https://appclip.apple.com/id")!
-        
-        // Base parameters
-        var queryItems = [
-            URLQueryItem(name: "p", value: "com.mobleypro.mobley.Force.Clip")
-        ]
-        
-        // Add settings parameters
-        queryItems.append(URLQueryItem(name: "fn", value: String(settings.forceNumber)))
-        queryItems.append(URLQueryItem(name: "ac", value: String(settings.activationCount)))
-        queryItems.append(URLQueryItem(name: "mt", value: settings.magicTrickMode.rawValue))
-        queryItems.append(URLQueryItem(name: "dt", value: settings.dateTimeFormat.rawValue))
-        queryItems.append(URLQueryItem(name: "bt", value: settings.buttonTheme.rawValue))
-        queryItems.append(URLQueryItem(name: "pp", value: String(settings.plusPerfectEnabled)))
-        queryItems.append(URLQueryItem(name: "sws", value: String(settings.startWithScreenshot)))
-        
-        components.queryItems = queryItems
-        
-        let url = components.url!.absoluteString
+        let url = AppClipQuery(settings: settings).url().absoluteString
         debugLog("🔗 Generated App Clip URL: \(url)")
         return url
     }
@@ -109,14 +91,14 @@ struct QRCodeNFCView: View {
     }
     
     private func writeToNFC() {
+        guard nfcWriter == nil else { return }
         let writer = NFCWriter(url: appClipURL) { message in
-            DispatchQueue.main.async {
-                self.alertMessage = message
-                self.showingAlert = true
-            }
+            alertMessage = message
+            showingAlert = true
+            nfcWriter = nil
         }
-        
-        nfcSession = writer.writeToNFC()
+        nfcWriter = writer
+        writer.start()
     }
 }
 
@@ -258,4 +240,5 @@ struct InstructionsSection: View {
     NavigationView {
         QRCodeNFCView()
     }
+    .environmentObject(CalculatorSettings())
 }

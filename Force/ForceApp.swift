@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import ForceShared
 
 @main
 struct ForceApp: App {
@@ -68,9 +69,7 @@ struct ScreenshotModeView: View {
     }
     
     private func updateScreenshotMode() {
-        let screenshotExists = UserDefaults.standard.data(forKey: "backgroundImage") != nil
-        // Access the property value directly
-        let screenshotEnabled = settings.startWithScreenshot
-        showScreenshot = screenshotEnabled && screenshotExists
+        let screenshotExists = ImageStorageManager.shared.loadImage() != nil
+        showScreenshot = settings.startWithScreenshot && screenshotExists
     }
 }
