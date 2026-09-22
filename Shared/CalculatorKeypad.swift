@@ -15,9 +15,16 @@ public struct CalculatorKeypad: View {
     let operationAction: (CalculatorOperation) -> Void
     let equalsAction: () -> Void
 
-    private static let neutral = Color(hex: "5c5c5f")
+    /// Geometry measured from the stock iOS calculator: keys sit close together
+    /// with wider margins at the screen edges, which yields 85.5pt keys on a
+    /// 393pt-wide screen against the stock 85.3pt.
+    private static let keyGap: CGFloat = 7
+    private static let sideMargin: CGFloat = 15
+    private static let bottomMargin: CGFloat = 34
+
+    private static let neutral = Color(hex: "5e5e5e")
     private static let neutralPressed = Color(hex: "8c8c8c")
-    private static let digit = Color(hex: "2a2a2c")
+    private static let digit = Color(hex: "343434")
     private static let digitPressed = Color(hex: "727272")
 
     private var operatorColor: Color { settings.buttonTheme.color }
@@ -46,19 +53,19 @@ public struct CalculatorKeypad: View {
     }
 
     public var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: Self.keyGap) {
             topRow
             digitRow(["7", "8", "9"], operation: .multiply, icon: "icon-multiply")
             digitRow(["4", "5", "6"], operation: .subtract, icon: "icon-minus")
             digitRow(["1", "2", "3"], operation: .add, icon: "icon-plus")
             bottomRow
         }
-        .padding(.horizontal, 12)
-        .padding(.bottom, 34)
+        .padding(.horizontal, Self.sideMargin)
+        .padding(.bottom, Self.bottomMargin)
     }
 
     private var topRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Self.keyGap) {
             icon("icon-back", color: Self.neutral, pressed: Self.neutralPressed, size: 38, action: backspaceAction)
             icon("icon-ac", color: Self.neutral, pressed: Self.neutralPressed, size: 38, action: clearAction)
             icon("icon-percent", color: Self.neutral, pressed: Self.neutralPressed, size: 36) {
@@ -75,7 +82,7 @@ public struct CalculatorKeypad: View {
         operation: CalculatorOperation,
         icon iconName: String
     ) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Self.keyGap) {
             ForEach(titles, id: \.self) { title in
                 digitKey(title)
             }
@@ -86,7 +93,7 @@ public struct CalculatorKeypad: View {
     }
 
     private var bottomRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Self.keyGap) {
             icon("icon-plusminus", color: Self.digit, pressed: Self.digitPressed, size: 36, action: toggleSignAction)
             digitKey("0")
             NewCalculatorButton(

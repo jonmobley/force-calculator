@@ -20,7 +20,7 @@ public enum ButtonTheme: String, CaseIterable, Codable {
         switch self {
         case .blue: return "007AFF"
         case .green: return "34C759"
-        case .orange: return "FF9F0A"
+        case .orange: return "FF9500"
         case .pink: return "FF2D55"
         case .purple: return "AF52DE"
         }
@@ -61,7 +61,7 @@ public enum ButtonTheme: String, CaseIterable, Codable {
     private struct CachedColors {
         static let blue = Color(hex: "007AFF")
         static let green = Color(hex: "34C759")
-        static let orange = Color(hex: "FF9F0A")
+        static let orange = Color(hex: "FF9500")
         static let pink = Color(hex: "FF2D55")
         static let purple = Color(hex: "AF52DE")
         static let bluePressed = Color(hex: "4DA3FF")
@@ -79,7 +79,9 @@ public class CalculatorSettings: ObservableObject, Codable {
     @Published public var activationCount: Int = 3
     @Published public var currentCount: Int = 0
     @Published public var magicTrickMode: MagicTrickMode = .forceNumber
-    @Published public var buttonTheme: ButtonTheme = .blue
+    /// Orange matches the stock iOS calculator, so an App Clip that has not yet
+    /// received the performer's settings still looks right on the first frame.
+    @Published public var buttonTheme: ButtonTheme = .orange
     @Published public var openToCalculator: Bool = false
     @Published public var dateTimeFormat: DateTimeFormat = .mmDDYY
     @Published public var plusPerfectEnabled: Bool = false
@@ -102,7 +104,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         activationCount = try container.decode(Int.self, forKey: .activationCount)
         currentCount = try container.decode(Int.self, forKey: .currentCount)
         magicTrickMode = try container.decode(MagicTrickMode.self, forKey: .magicTrickMode)
-        buttonTheme = try container.decodeIfPresent(ButtonTheme.self, forKey: .buttonTheme) ?? .blue
+        buttonTheme = try container.decodeIfPresent(ButtonTheme.self, forKey: .buttonTheme) ?? .orange
         openToCalculator = try container.decodeIfPresent(Bool.self, forKey: .openToCalculator) ?? false
         dateTimeFormat = try container.decodeIfPresent(DateTimeFormat.self, forKey: .dateTimeFormat) ?? .mmDDYY
         plusPerfectEnabled = try container.decodeIfPresent(Bool.self, forKey: .plusPerfectEnabled) ?? false

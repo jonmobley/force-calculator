@@ -31,7 +31,9 @@ public struct NewCalculatorButton: View {
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 38, weight: .medium))
+                // Measured against stock iOS: a 26pt cap height with a 0.09em
+                // stem, which is `regular` at 37pt rather than `medium` at 38pt.
+                .font(.system(size: 37, weight: .regular))
                 .foregroundColor(titleColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .aspectRatio(1, contentMode: .fit)

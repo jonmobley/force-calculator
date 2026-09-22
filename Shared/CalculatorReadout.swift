@@ -51,67 +51,106 @@ public struct CalculatorReadout: View {
         .frame(height: geometry.size.height * 0.35)
     }
 
+    /// Geometry measured from the stock iOS calculator.
+    private enum Metrics {
+        static let controlDiameter: CGFloat = 43
+        static let controlInset: CGFloat = 16
+        static let controlTop: CGFloat = 2
+        static let controlFill = Color(hex: "121212")
+        static let glyph = Color(white: 0.95)
+        static let readoutInset: CGFloat = 16
+    }
+
     private var header: some View {
-        // Top alignment keeps the menu icon still when the mode badge appears.
+        // Top alignment keeps the controls still when the mode badge appears.
         HStack(alignment: .top) {
-            if let onDismiss {
-                menuButton(onDismiss)
-            }
+            historyButton
             Spacer()
             trailingStatus
         }
+        .padding(.horizontal, Metrics.controlInset)
+        .padding(.top, Metrics.controlTop)
     }
 
-    private func menuButton(_ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image("icon-menu", bundle: .main)
+    /// Left control. Stock iOS shows calculation history here; the host app uses
+    /// the same shape to leave the calculator, and the clip has nowhere to go so
+    /// it renders the control without an action.
+    private var historyButton: some View {
+        circularControl {
+            Image(systemName: "clock")
+                .font(.system(size: 19, weight: .regular))
+                .foregroundColor(Metrics.glyph)
+        } action: {
+            onDismiss?()
+        }
+        .accessibilityLabel(onDismiss == nil ? "History" : "Close calculator")
+        .allowsHitTesting(onDismiss != nil)
+    }
+
+    /// Right control. Reads as the stock mode switcher, and is the covert way to
+    /// change Force versus Date/Time.
+    private var modeButton: some View {
+        circularControl {
+            Image("icon-calculator", bundle: .main)
                 .renderingMode(.template)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .frame(width: 24, height: 24)
-                .foregroundColor(themeColor)
+                .frame(width: 20, height: 20)
+                .foregroundColor(Metrics.glyph)
+        } action: {
+            onToggleMode()
+            onRevealMode()
         }
-        .padding(.leading, 24)
-        .padding(.top, 20)
-        .accessibilityLabel("Close calculator")
+        .accessibilityLabel("Switch mode")
+    }
+
+    private func circularControl<Glyph: View>(
+        @ViewBuilder glyph: () -> Glyph,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            glyph()
+                .frame(width: Metrics.controlDiameter, height: Metrics.controlDiameter)
+                .background(Metrics.controlFill)
+                .clipShape(Circle())
+        }
     }
 
     private var trailingStatus: some View {
-        VStack(alignment: .trailing, spacing: 4) {
+        VStack(alignment: .trailing, spacing: 6) {
+            modeButton
             if showForceNumber {
                 Text("\(forceNumber)")
                     .font(.system(size: 16))
                     .foregroundColor(Color.gray.opacity(0.7))
-                    .padding(.trailing, 24)
-                    .padding(.top, 20)
             } else if showModeText {
                 modeBadge
             }
         }
     }
 
+    /// Shown only after a reveal, so nothing on screen advertises the mode.
     private var modeBadge: some View {
-        Button(action: onToggleMode) {
-            Text(modeName)
-                .font(.caption.weight(.semibold))
-                .foregroundColor(themeColor)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(Color.white.opacity(0.12))
-                .clipShape(Capsule())
-        }
-        .padding(.trailing, 24)
-        .padding(.top, 20)
-        .accessibilityLabel("Current mode: \(modeName). Tap to switch.")
+        Text(modeName)
+            .font(.caption.weight(.semibold))
+            .foregroundColor(themeColor)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(Color.white.opacity(0.12))
+            .clipShape(Capsule())
+            .accessibilityLabel("Current mode: \(modeName)")
     }
 
     private var readout: some View {
         HStack {
             Spacer()
             Text(display)
-                .font(.system(size: min(geometry.size.width * 0.22, 100), weight: .thin))
+                // Measured against stock: 0.165 of the width gives a lone zero a
+                // 48pt cap height on a 393pt screen, and stock's stem is about
+                // 0.087em, which is `regular` rather than the `thin` used before.
+                .font(.system(size: min(geometry.size.width * 0.165, 74), weight: .regular))
                 .foregroundColor(.white)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, Metrics.readoutInset)
                 .minimumScaleFactor(0.5)
                 .lineLimit(1)
         }
