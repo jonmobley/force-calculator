@@ -18,6 +18,10 @@ struct CalculatorView: View {
     @State private var hasUpdatedForMinuteChange = false
     @State private var showForceNumber = false
     @State private var showModeText = false
+    @State private var modeHideWorkItem: DispatchWorkItem?
+
+    /// How long the mode badge stays visible after a reveal or a mode change.
+    private let modeRevealDuration: TimeInterval = 3
     
     // Plus Perfect state
     @State private var plusPerfectMode: PlusPerfectState = .inactive
@@ -50,7 +54,8 @@ struct CalculatorView: View {
                     showModeText: showModeText,
                     modeName: settings.magicTrickMode.rawValue,
                     onDismiss: { dismiss() },
-                    onToggleMode: toggleMode
+                    onToggleMode: toggleMode,
+                    onRevealMode: revealMode
                 )
                 CalculatorButtonGrid(
                     settings: settings,
@@ -94,6 +99,7 @@ struct CalculatorView: View {
         .onDisappear {
             plusPerfectHandler.stopMonitoring()
             modeSyncCancellable?.cancel()
+            modeHideWorkItem?.cancel()
         }
     }
     
@@ -165,24 +171,31 @@ struct CalculatorView: View {
         )
     }
     
-    private func toggleMode() {
-        // Toggle between Force Number and Date/Time modes
-        settings.magicTrickMode = settings.magicTrickMode == .forceNumber ? .exactDateTime : .forceNumber
-        
-        settings.saveSettings()
-        
-        // Show mode text feedback
+    /// Shows the hidden mode badge long enough to read it or tap it.
+    private func revealMode() {
         withAnimation(.easeInOut(duration: 0.2)) {
             showModeText = true
         }
-        
-        // Hide mode text after 0.5 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+        scheduleModeHide()
+        debugLog("👁️ Mode revealed: \(settings.magicTrickMode)")
+    }
+
+    /// Restarts the auto-hide countdown so a tap does not cut the reveal short.
+    private func scheduleModeHide() {
+        modeHideWorkItem?.cancel()
+        let workItem = DispatchWorkItem {
             withAnimation(.easeInOut(duration: 0.2)) {
                 showModeText = false
             }
         }
-        
+        modeHideWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + modeRevealDuration, execute: workItem)
+    }
+
+    private func toggleMode() {
+        settings.magicTrickMode = settings.magicTrickMode == .forceNumber ? .exactDateTime : .forceNumber
+        settings.saveSettings()
+        scheduleModeHide()
         debugLog("🔄 Mode toggled to: \(settings.magicTrickMode)")
     }
     

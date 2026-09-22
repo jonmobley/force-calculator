@@ -1,7 +1,11 @@
 import SwiftUI
 import ForceShared
 
-/// Host calculator readout, dismiss control, and Force versus Date/Time switch.
+/// Host calculator readout and dismiss control.
+///
+/// The current mode is deliberately hidden so the calculator looks ordinary to a
+/// spectator. A long press on the readout reveals it, and while revealed the
+/// label can be tapped to switch modes.
 struct HostCalculatorDisplay: View {
     let display: String
     let geometry: GeometryProxy
@@ -12,10 +16,7 @@ struct HostCalculatorDisplay: View {
     let modeName: String
     let onDismiss: () -> Void
     let onToggleMode: () -> Void
-
-    private var modeLabel: String {
-        modeName == MagicTrickMode.forceNumber.rawValue ? "Force" : "Time"
-    }
+    let onRevealMode: () -> Void
 
     var body: some View {
         VStack {
@@ -27,7 +28,8 @@ struct HostCalculatorDisplay: View {
     }
 
     private var header: some View {
-        HStack {
+        // Top alignment keeps the menu icon still when the mode badge appears.
+        HStack(alignment: .top) {
             Button(action: onDismiss) {
                 Image("icon-menu")
                     .renderingMode(.template)
@@ -46,30 +48,31 @@ struct HostCalculatorDisplay: View {
 
     private var trailingStatus: some View {
         VStack(alignment: .trailing, spacing: 4) {
-            Button(action: onToggleMode) {
-                Text(modeLabel)
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(themeColor)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.white.opacity(0.12))
-                    .clipShape(Capsule())
-            }
-            .padding(.trailing, 24)
-            .padding(.top, 20)
-            .accessibilityLabel("Force Number or Date and Time")
             if showForceNumber {
                 Text("\(forceNumber)")
                     .font(.system(size: 16))
                     .foregroundColor(Color.gray.opacity(0.7))
                     .padding(.trailing, 24)
+                    .padding(.top, 20)
             } else if showModeText {
-                Text(modeName)
-                    .font(.system(size: 16))
-                    .foregroundColor(Color.gray.opacity(0.7))
-                    .padding(.trailing, 24)
+                modeBadge
             }
         }
+    }
+
+    private var modeBadge: some View {
+        Button(action: onToggleMode) {
+            Text(modeName)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(themeColor)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.white.opacity(0.12))
+                .clipShape(Capsule())
+        }
+        .padding(.trailing, 24)
+        .padding(.top, 20)
+        .accessibilityLabel("Current mode: \(modeName). Tap to switch.")
     }
 
     private var readout: some View {
@@ -84,5 +87,9 @@ struct HostCalculatorDisplay: View {
                 .lineLimit(1)
         }
         .padding(.bottom, 30)
+        // Covert reveal. The whole readout row is the target so there is no
+        // visible control, and a press here cannot alter the calculation.
+        .contentShape(Rectangle())
+        .onLongPressGesture(minimumDuration: 0.6, perform: onRevealMode)
     }
 }
