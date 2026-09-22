@@ -570,6 +570,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Force/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Force;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_NFCReaderUsageDescription = "Force needs NFC access to write the App Clip link to NFC stickers.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Force needs access to save the QR code to your photo library for easy sharing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -608,6 +609,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Force/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Force;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_NFCReaderUsageDescription = "Force needs NFC access to write the App Clip link to NFC stickers.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Force needs access to save the QR code to your photo library for easy sharing.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
