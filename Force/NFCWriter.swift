@@ -1,21 +1,29 @@
 import Foundation
 import CoreNFC
 
+/// How a tag write ended. The system NFC sheet already reports success and
+/// cancellation, so only `failure` needs surfacing in the app's own UI.
+enum NFCWriteOutcome {
+    case success
+    case cancelled
+    case failure(String)
+}
+
 /// Writes the App Clip URL to a tag. The owner must retain this object for the session.
 class NFCWriter: NSObject, NFCNDEFReaderSessionDelegate {
     private let url: String
-    private let completion: (String) -> Void
+    private let completion: (NFCWriteOutcome) -> Void
     private var finished = false
     private var session: NFCNDEFReaderSession?
 
-    init(url: String, completion: @escaping (String) -> Void) {
+    init(url: String, completion: @escaping (NFCWriteOutcome) -> Void) {
         self.url = url
         self.completion = completion
     }
 
     func start() {
         guard NFCNDEFReaderSession.readingAvailable else {
-            finish("NFC is not available on this device")
+            finish(.failure("NFC is not available on this device"))
             return
         }
         let session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: false)
@@ -27,18 +35,18 @@ class NFCWriter: NSObject, NFCNDEFReaderSessionDelegate {
     func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {
         self.session = nil
         guard let nfcError = error as? NFCReaderError else {
-            finish("NFC error: \(error.localizedDescription)")
+            finish(.failure("NFC error: \(error.localizedDescription)"))
             return
         }
         switch nfcError.code {
         case .readerSessionInvalidationErrorUserCanceled:
-            finish("NFC writing cancelled")
+            finish(.cancelled)
         case .readerSessionInvalidationErrorSessionTimeout:
-            finish("NFC session timed out")
+            finish(.failure("NFC session timed out"))
         case .readerSessionInvalidationErrorFirstNDEFTagRead:
-            finish("App Clip link successfully written to NFC sticker!")
+            finish(.success)
         default:
-            finish("NFC error: \(error.localizedDescription)")
+            finish(.failure("NFC error: \(error.localizedDescription)"))
         }
     }
 
@@ -83,7 +91,7 @@ class NFCWriter: NSObject, NFCNDEFReaderSessionDelegate {
                 return
             }
             session.alertMessage = "Successfully wrote App Clip link to NFC sticker!"
-            self.finish("App Clip link successfully written to NFC sticker!")
+            self.finish(.success)
             session.invalidate()
         }
     }
@@ -96,12 +104,12 @@ class NFCWriter: NSObject, NFCNDEFReaderSessionDelegate {
         }
     }
 
-    private func finish(_ message: String) {
+    private func finish(_ outcome: NFCWriteOutcome) {
         guard !finished else { return }
         finished = true
         session = nil
         DispatchQueue.main.async {
-            self.completion(message)
+            self.completion(outcome)
         }
     }
 }

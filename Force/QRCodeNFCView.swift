@@ -92,10 +92,13 @@ struct QRCodeNFCView: View {
     
     private func writeToNFC() {
         guard nfcWriter == nil else { return }
-        let writer = NFCWriter(url: appClipURL) { message in
-            alertMessage = message
-            showingAlert = true
+        let writer = NFCWriter(url: appClipURL) { outcome in
             nfcWriter = nil
+            // The system NFC sheet already confirms success and cancellation.
+            if case .failure(let message) = outcome {
+                alertMessage = message
+                showingAlert = true
+            }
         }
         nfcWriter = writer
         writer.start()
