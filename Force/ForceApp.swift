@@ -11,8 +11,12 @@ import ForceShared
 
 @main
 struct ForceApp: App {
-    @StateObject private var settings = CalculatorSettings()
+    // Deliberately `@State` rather than `@StateObject`: the scene only needs to
+    // own the settings, not observe them. Observing here would rebuild the whole
+    // tree on every stored change.
+    @State private var settings = CalculatorSettings()
     @State private var isReady = false
+    @Environment(\.scenePhase) private var scenePhase
     
     init() {
         debugLog("🚀🚀🚀 ForceApp: Application Starting 🚀🚀🚀")
@@ -31,8 +35,14 @@ struct ForceApp: App {
                         .onAppear {
                             // Load settings synchronously on first appear
                             settings.loadSettings()
+                            settings.beginAutosave()
                             isReady = true
                         }
+                }
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                if newPhase != .active {
+                    settings.flushPendingSave()
                 }
             }
         }
@@ -41,7 +51,9 @@ struct ForceApp: App {
 
 // Separate view to handle the conditional logic
 struct ScreenshotModeView: View {
-    @ObservedObject var settings: CalculatorSettings
+    // Not observed: this view reacts only to `startWithScreenshot`, which it
+    // receives through the publisher below.
+    let settings: CalculatorSettings
     @State private var showScreenshot = false
     
     var body: some View {
@@ -69,7 +81,17 @@ struct ScreenshotModeView: View {
     }
     
     private func updateScreenshotMode() {
-        let screenshotExists = ImageStorageManager.shared.loadImage() != nil
-        showScreenshot = settings.startWithScreenshot && screenshotExists
+        guard settings.startWithScreenshot else {
+            showScreenshot = false
+            return
+        }
+        Task {
+            // Only existence matters here, and the check runs off the main
+            // thread so a stored screenshot cannot delay the first frame.
+            let screenshotExists = await Task.detached(priority: .userInitiated) {
+                ImageStorageManager.shared.hasImage()
+            }.value
+            showScreenshot = screenshotExists
+        }
     }
 }

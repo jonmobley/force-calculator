@@ -38,17 +38,20 @@ struct ScreenshotView: View {
             CalculatorView()
                 .environmentObject(settings)
         }
-        .onAppear {
-            loadBackgroundImage()
+        .task {
+            await loadBackgroundImage()
         }
     }
     
-    private func loadBackgroundImage() {
-        if let image = ImageStorageManager.shared.loadImage() {
-            backgroundImage = image
-            debugLog("📸 Screenshot loaded successfully")
-        } else {
+    private func loadBackgroundImage() async {
+        let image = await Task.detached(priority: .userInitiated) {
+            ImageStorageManager.shared.loadImage()
+        }.value
+        guard let image else {
             debugLog("📸 No screenshot found")
+            return
         }
+        backgroundImage = image
+        debugLog("📸 Screenshot loaded successfully")
     }
 }

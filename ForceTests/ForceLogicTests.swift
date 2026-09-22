@@ -101,6 +101,62 @@ final class ForceLogicTests: XCTestCase {
         XCTAssertTrue(live.plusPerfectEnabled)
     }
 
+    func testAutosaveCoalescesEditsIntoOneWrite() {
+        let suite = UserDefaults(suiteName: CalculatorSettings.appGroup) ?? .standard
+        let key = CalculatorSettings.userDefaultsKey
+        let original = suite.data(forKey: key)
+        defer {
+            if let original {
+                suite.set(original, forKey: key)
+            } else {
+                suite.removeObject(forKey: key)
+            }
+        }
+        suite.removeObject(forKey: key)
+
+        let settings = CalculatorSettings()
+        settings.beginAutosave()
+        settings.forceNumber = 1234
+        settings.activationCount = 7
+        settings.buttonTheme = .purple
+        XCTAssertNil(suite.data(forKey: key), "A burst of edits should not write once per edit")
+
+        settings.flushPendingSave()
+        let reloaded = CalculatorSettings()
+        reloaded.loadSettings()
+        XCTAssertEqual(reloaded.forceNumber, 1234)
+        XCTAssertEqual(reloaded.activationCount, 7)
+        XCTAssertEqual(reloaded.buttonTheme, .purple)
+    }
+
+    func testAutosaveWritesAfterCoalescingWindow() {
+        let suite = UserDefaults(suiteName: CalculatorSettings.appGroup) ?? .standard
+        let key = CalculatorSettings.userDefaultsKey
+        let original = suite.data(forKey: key)
+        defer {
+            if let original {
+                suite.set(original, forKey: key)
+            } else {
+                suite.removeObject(forKey: key)
+            }
+        }
+        suite.removeObject(forKey: key)
+
+        let settings = CalculatorSettings()
+        settings.beginAutosave()
+        settings.forceNumber = 5678
+
+        let written = expectation(description: "autosave wrote without an explicit flush")
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            if suite.data(forKey: key) != nil { written.fulfill() }
+        }
+        wait(for: [written], timeout: 3)
+
+        let reloaded = CalculatorSettings()
+        reloaded.loadSettings()
+        XCTAssertEqual(reloaded.forceNumber, 5678)
+    }
+
     private func makeDate(hour: Int, minute: Int) -> (date: Date, calendar: Calendar) {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!

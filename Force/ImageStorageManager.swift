@@ -35,6 +35,12 @@ class ImageStorageManager {
         }
     }
     
+    /// True when a stored image exists, without paying for decoding it.
+    func hasImage() -> Bool {
+        migrateIfNeeded()
+        return FileManager.default.fileExists(atPath: fileURL.path)
+    }
+    
     func loadImage() -> UIImage? {
         // Check migration first
         migrateIfNeeded()

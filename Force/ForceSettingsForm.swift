@@ -11,7 +11,6 @@ struct ForceCalculatorSettingsSection: View {
     var body: some View {
         Section(header: Text("Calculator Settings")) {
             Toggle("Open to Calculator", isOn: $settings.openToCalculator)
-                .onChange(of: settings.openToCalculator) { _, _ in settings.saveSettings() }
             themePicker
             modePicker
             trickValue
@@ -29,7 +28,6 @@ struct ForceCalculatorSettingsSection: View {
         }
         .pickerStyle(.menu)
         .tint(themeColor)
-        .onChange(of: settings.buttonTheme) { _, _ in settings.saveSettings() }
     }
 
     private var modePicker: some View {
@@ -40,7 +38,6 @@ struct ForceCalculatorSettingsSection: View {
         }
         .pickerStyle(.menu)
         .tint(themeColor)
-        .onChange(of: settings.magicTrickMode) { _, _ in settings.saveSettings() }
     }
 
     @ViewBuilder
@@ -73,7 +70,6 @@ struct ForceCalculatorSettingsSection: View {
         }
         .pickerStyle(.menu)
         .tint(themeColor)
-        .onChange(of: settings.dateTimeFormat) { _, _ in settings.saveSettings() }
     }
 
     private var activationPicker: some View {
@@ -85,7 +81,6 @@ struct ForceCalculatorSettingsSection: View {
             }
             .pickerStyle(.menu)
             .tint(themeColor)
-            .onChange(of: settings.activationCount) { _, _ in settings.saveSettings() }
             Text(ForceActivationCopy.ordinalText(for: settings.activationCount))
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -95,7 +90,6 @@ struct ForceCalculatorSettingsSection: View {
     private var plusPerfectToggle: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle("Plus Perfect", isOn: $settings.plusPerfectEnabled)
-                .onChange(of: settings.plusPerfectEnabled) { _, _ in settings.saveSettings() }
             Text("Upside-down + arms the trick. Upright + adds normally.")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -105,7 +99,6 @@ struct ForceCalculatorSettingsSection: View {
     private var screenshotToggle: some View {
         VStack(alignment: .leading, spacing: 4) {
             Toggle("Start with Screenshot", isOn: $settings.startWithScreenshot)
-                .onChange(of: settings.startWithScreenshot) { _, _ in settings.saveSettings() }
             Text("App starts showing screenshot, tap anywhere to open calculator")
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -120,7 +113,6 @@ struct ForceCalculatorSettingsSection: View {
         }
         guard let number = Int(filtered) else { return }
         settings.forceNumber = number
-        settings.saveSettings()
     }
 }
 

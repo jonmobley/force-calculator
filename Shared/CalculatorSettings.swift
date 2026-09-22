@@ -127,6 +127,8 @@ public class CalculatorSettings: ObservableObject, Codable {
 
     /// Copies every stored field, including screenshot launch and Plus Perfect.
     public func applyStored(_ stored: CalculatorSettings) {
+        isApplyingStoredValues = true
+        defer { isApplyingStoredValues = false }
         theme = stored.theme
         forceNumber = stored.forceNumber
         activationCount = stored.activationCount
@@ -160,6 +162,48 @@ public class CalculatorSettings: ObservableObject, Codable {
         }
         defaults.set(data, forKey: Self.userDefaultsKey)
         debugLog("✅ CalculatorSettings: saved forceNumber=\(forceNumber)")
+    }
+
+    // MARK: - Autosave
+
+    /// Coalescing window for autosaves. One edit reaches several observers, so a
+    /// short delay collapses a burst of notifications into a single write.
+    private static let autosaveDelay: TimeInterval = 0.25
+
+    private var autosaveCancellable: AnyCancellable?
+    private var pendingSave: DispatchWorkItem?
+    private var isApplyingStoredValues = false
+
+    /// Persists every later change automatically.
+    ///
+    /// Only the host calls this. The App Clip takes its values from the
+    /// invocation URL and must not write them back into the shared group.
+    public func beginAutosave() {
+        guard autosaveCancellable == nil else { return }
+        autosaveCancellable = objectWillChange.sink { [weak self] _ in
+            self?.scheduleSave()
+        }
+    }
+
+    /// Writes a coalesced change right away. Call this when the app loses focus.
+    public func flushPendingSave() {
+        guard pendingSave != nil else { return }
+        pendingSave?.cancel()
+        pendingSave = nil
+        saveSettings()
+    }
+
+    private func scheduleSave() {
+        guard !isApplyingStoredValues else { return }
+        pendingSave?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            self?.pendingSave = nil
+            self?.saveSettings()
+        }
+        pendingSave = work
+        // `objectWillChange` fires before the property is assigned, so the write
+        // has to happen after the current run loop turn to see the new value.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.autosaveDelay, execute: work)
     }
 
     // MARK: - Date and time

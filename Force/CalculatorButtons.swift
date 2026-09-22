@@ -11,8 +11,7 @@ struct NewCalculatorButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.custom("SF Pro Display", size: 38))
-                .fontWeight(.medium)
+                .font(.system(size: 38, weight: .medium))
                 .foregroundColor(titleColor)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .aspectRatio(1, contentMode: .fit)

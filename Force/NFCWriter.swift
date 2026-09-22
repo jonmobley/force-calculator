@@ -11,6 +11,8 @@ enum NFCWriteOutcome {
 
 /// Writes the App Clip URL to a tag. The owner must retain this object for the session.
 class NFCWriter: NSObject, NFCNDEFReaderSessionDelegate {
+    private static let scanPrompt = "Hold your iPhone near an NFC sticker to write the App Clip link"
+
     private let url: String
     private let completion: (NFCWriteOutcome) -> Void
     private var finished = false
@@ -27,9 +29,15 @@ class NFCWriter: NSObject, NFCNDEFReaderSessionDelegate {
             return
         }
         let session = NFCNDEFReaderSession(delegate: self, queue: nil, invalidateAfterFirstRead: false)
-        session.alertMessage = "Hold your iPhone near an NFC sticker to write the App Clip link"
+        session.alertMessage = Self.scanPrompt
         self.session = session
         session.begin()
+    }
+
+    func readerSessionDidBecomeActive(_ session: NFCNDEFReaderSession) {
+        // The prompt set before `begin()` is not always picked up by the system
+        // sheet, so restate it once the session is actually live.
+        session.alertMessage = Self.scanPrompt
     }
 
     func readerSession(_ session: NFCNDEFReaderSession, didInvalidateWithError error: Error) {

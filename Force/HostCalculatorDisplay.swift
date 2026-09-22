@@ -79,8 +79,7 @@ struct HostCalculatorDisplay: View {
         HStack {
             Spacer()
             Text(display)
-                .font(.custom("SF Pro Display", size: min(geometry.size.width * 0.22, 100)))
-                .fontWeight(.thin)
+                .font(.system(size: min(geometry.size.width * 0.22, 100), weight: .thin))
                 .foregroundColor(.white)
                 .padding(.horizontal, 24)
                 .minimumScaleFactor(0.5)

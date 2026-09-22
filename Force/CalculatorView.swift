@@ -194,7 +194,6 @@ struct CalculatorView: View {
 
     private func toggleMode() {
         settings.magicTrickMode = settings.magicTrickMode == .forceNumber ? .exactDateTime : .forceNumber
-        settings.saveSettings()
         scheduleModeHide()
         debugLog("🔄 Mode toggled to: \(settings.magicTrickMode)")
     }
