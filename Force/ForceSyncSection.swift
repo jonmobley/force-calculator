@@ -1,35 +1,55 @@
 import SwiftUI
 import ForceShared
 
-/// Controls for the config service that feeds settings to the App Clip.
+/// One-line report on whether the config service matches the app.
 ///
-/// Without a write token the app works exactly as before, embedding settings in
-/// each newly written tag. With a token, settings are published instead, so tags
-/// already in circulation pick up changes.
+/// Collapsed by default because it needs no attention once a token is saved. It
+/// expands to allow entering or replacing the token, and shouts when the service
+/// is behind, since that silently means spectators would see old settings.
 struct ForceSyncSection: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @ObservedObject var publisher: ForceConfigPublisher
 
+    @State private var isExpanded = false
     @State private var token = ""
-    @State private var isEditingToken = false
+
+    private var needsAttention: Bool {
+        switch publisher.state {
+        case .outOfDate, .missingToken: return true
+        case .publishing, .synced: return false
+        }
+    }
 
     var body: some View {
         Section {
-            if isEditingToken || ConfigTokenStore.load() == nil {
-                tokenField
-            } else {
-                storedTokenRow
-            }
             statusRow
-            publishButton
-        } header: {
-            Text("Live Settings")
+            if isExpanded {
+                tokenField
+                Button("Publish Now") { publisher.publish() }
+                    .disabled(publisher.state == .publishing)
+            }
         } footer: {
-            Text(
-                "With a write token, your settings are published so NFC stickers "
-                + "and QR codes you already made stay up to date. Without one, "
-                + "each sticker keeps the settings it was written with."
-            )
+            if needsAttention {
+                Text(attentionFooter)
+                    .foregroundColor(.red)
+            }
+        }
+    }
+
+    private var statusRow: some View {
+        Button {
+            isExpanded.toggle()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .foregroundColor(tint)
+                Text(label)
+                    .foregroundColor(.primary)
+                Spacer()
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
         }
     }
 
@@ -41,63 +61,55 @@ struct ForceSyncSection: View {
             Button("Save Token") {
                 ConfigTokenStore.save(token)
                 token = ""
-                isEditingToken = false
-                publisher.publish(settings)
+                publisher.publish()
             }
             .disabled(token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
     }
 
-    private var storedTokenRow: some View {
-        HStack {
-            Text("Write Token")
-            Spacer()
-            Text("Saved")
-                .foregroundColor(.secondary)
-            Button("Change") { isEditingToken = true }
-                .buttonStyle(.borderless)
-        }
-    }
+    // MARK: - Presentation
 
-    private var statusRow: some View {
-        HStack {
-            Text("Status")
-            Spacer()
-            Text(statusText)
-                .font(.caption)
-                .multilineTextAlignment(.trailing)
-                .foregroundColor(statusColor)
-        }
-    }
-
-    private var publishButton: some View {
-        Button("Publish Now") { publisher.publish(settings) }
-            .disabled(publisher.state == .publishing)
-    }
-
-    private var statusText: String {
+    private var label: String {
         switch publisher.state {
-        case .idle:
-            return "Not published yet"
         case .missingToken:
-            return "Add a write token to publish"
+            return "Not publishing"
         case .publishing:
             return "Publishing…"
-        case .published(let date):
-            return "Published \(date.formatted(date: .omitted, time: .shortened))"
-        case .failed(let message):
-            return message
+        case .synced(let date):
+            return "Live · \(date.formatted(date: .omitted, time: .shortened))"
+        case .outOfDate(let reason):
+            return "Out of date · \(reason)"
         }
     }
 
-    private var statusColor: Color {
+    private var icon: String {
         switch publisher.state {
-        case .failed:
-            return .red
-        case .published:
-            return .green
-        default:
-            return .secondary
+        case .missingToken: return "circle.dashed"
+        case .publishing: return "arrow.triangle.2.circlepath"
+        case .synced: return "checkmark.circle.fill"
+        case .outOfDate: return "exclamationmark.triangle.fill"
+        }
+    }
+
+    private var tint: Color {
+        switch publisher.state {
+        case .missingToken: return .secondary
+        case .publishing: return .secondary
+        case .synced: return .green
+        case .outOfDate: return .red
+        }
+    }
+
+    private var attentionFooter: String {
+        switch publisher.state {
+        case .outOfDate:
+            return "Spectators will see your previous settings. This retries "
+                + "automatically as soon as you are back online."
+        case .missingToken:
+            return "Tap above and add your write token so stickers pick up "
+                + "setting changes."
+        case .publishing, .synced:
+            return ""
         }
     }
 }
