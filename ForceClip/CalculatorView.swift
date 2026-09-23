@@ -23,6 +23,10 @@ struct CalculatorView: View {
     private var force: ForceValues { quickForce.values(settings: settings) }
 
     var body: some View {
+        attachSession(to: calculator)
+    }
+
+    private var calculator: some View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 CalculatorReadout(
@@ -51,31 +55,72 @@ struct CalculatorView: View {
                 )
             }
         }
-        .background(Color.black.ignoresSafeArea())
-        .simultaneousGesture(screenTouch)
-        .onAppear(perform: startSession)
-        // The performer's live settings land after the calculator is already up, so the
-        // vibration has to be able to change its mind once they arrive.
-        .onChange(of: settings.perfectPlusHapticsEnabled) { _, enabled in
-            perfectPlusHandler.hapticsEnabled = enabled
-        }
-        // The invocation URL can arrive after the calculator is already up, so the
-        // reporter has to learn whose record to write to once it does.
-        .onChange(of: session.performerID) { _, id in
-            peek.performerID = id
-        }
-        // Gravity is sampled ten times a second, which is worth nothing once the calculator
-        // is off screen and costs the spectator battery. Only the sampling stops; a pending
-        // or armed trick keeps its state and picks up again on the way back.
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active {
-                startMonitoringTheTurn()
-            } else {
-                perfectPlusHandler.stopMonitoring()
-            }
-        }
-        .onDisappear(perform: stopSession)
     }
+
+    /// Launch, peek, and the turn sensor. Kept off the keypad so each stays readable.
+    private func attachSession(to view: some View) -> some View {
+        view
+            .background(Color.black.ignoresSafeArea())
+            .simultaneousGesture(screenTouch)
+            .onAppear(perform: startSession)
+            // The performer's live settings land after the calculator is already up, so the
+            // vibration has to be able to change its mind once they arrive.
+            .onChange(of: settings.perfectPlusHapticsEnabled) { _, enabled in
+                perfectPlusHandler.hapticsEnabled = enabled
+            }
+            // The invocation URL can arrive after the calculator is already up, so the
+            // reporter has to learn whose record to write to once it does.
+            .onChange(of: session.performerID) { _, id in
+                peek.performerID = id
+            }
+            // Peek may be switched on after the spectator is already calculating. Send
+            // whatever is on screen now, rather than waiting for the next key.
+            .onChange(of: settings.livePeekEnabled) { _, enabled in
+                guard enabled else { return }
+                peek.flush(calc.display, enabled: true, suppressed: peekSuppressed)
+            }
+            // Gravity is sampled ten times a second, which is worth nothing once the
+            // calculator is off screen and costs the spectator battery. Only the sampling
+            // stops; a pending or armed trick keeps its state and picks up again.
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    startMonitoringTheTurn()
+                    session.watchPeek(settings)
+                } else {
+                    perfectPlusHandler.stopMonitoring()
+                    session.stopWatchingPeek()
+                }
+            }
+            .onDisappear(perform: stopSession)
+            #if DEBUG
+            .task(id: session.wantsPeekDemo && settings.livePeekEnabled) {
+                await runPeekDemoIfNeeded()
+            }
+            #endif
+    }
+
+    #if DEBUG
+    /// Types `123 + 456 =` once when a developer launch asked for a peek demo.
+    ///
+    /// Only compiled into Debug builds and only armed when the invocation URL carries
+    /// `demo=peek`, so a release clip never types on its own.
+    private func runPeekDemoIfNeeded() async {
+        guard session.wantsPeekDemo, settings.livePeekEnabled else { return }
+        // Let the live-settings fetch and peek reporter finish wiring first.
+        try? await Task.sleep(for: .milliseconds(800))
+        let steps: [() -> Void] = [
+            { digitPressed("1") }, { digitPressed("2") }, { digitPressed("3") },
+            { performOperation(.add) },
+            { digitPressed("4") }, { digitPressed("5") }, { digitPressed("6") },
+            { equals() }
+        ]
+        for step in steps {
+            step()
+            try? await Task.sleep(for: .milliseconds(350))
+        }
+        debugLog("🧪 Peek demo typed 123 + 456 =")
+    }
+    #endif
 
     /// Every touch on the calculator, keys included, reported so an armed Perfect Plus can
     /// hold the number back until the phone has been left alone. Recognised alongside the
@@ -89,6 +134,7 @@ struct CalculatorView: View {
         calc.forceCount = 0
         peek.performerID = session.performerID
         startMonitoringTheTurn()
+        session.watchPeek(settings)
     }
 
     private func startMonitoringTheTurn() {
@@ -102,6 +148,7 @@ struct CalculatorView: View {
     private func stopSession() {
         peek.flush(calc.display, enabled: settings.livePeekEnabled, suppressed: peekSuppressed)
         peek.stop()
+        session.stopWatchingPeek()
         perfectPlusHandler.stopMonitoring()
         modeHideWorkItem?.cancel()
         // The override is good for one sitting only, so closing the calculator

@@ -23,19 +23,20 @@ final class ForcePeekReader: ObservableObject {
         case notAuthorized
     }
 
-    /// Fast enough to feel live in the hand, slow enough to be gentle on battery.
-    private static let pollInterval: TimeInterval = 1.5
+    /// How often the readout asks the service. The wait is measured from the start
+    /// of a poll, so a slow reply does not add a second gap on top of itself.
+    private static let pollInterval: Duration = .milliseconds(500)
 
-    /// A peek older than this is treated as nothing. It guards against showing a
-    /// number left over from a previous spectator: the service keeps returning the
-    /// last value written, so without an age limit a stale number would sit on the
-    /// readout as though the current spectator had just typed it. Comfortably
-    /// longer than a spectator's pause to think, short enough that a past session
-    /// does not bleed into this one. Compares the service clock against the
-    /// device's, so a few seconds of skew is fine at this scale.
+    /// A peek older than this is treated as nothing.
+    ///
+    /// Matches the service, which keeps a calculation for ten minutes. A shorter
+    /// window blanked the readout while a spectator was only thinking. Between
+    /// spectators the performer clears it; this limit is the backstop when they
+    /// do not. Compares the service clock against the device's, so a few seconds
+    /// of skew is fine at this scale.
     /// Nonisolated so `freshValue` can default to it: that helper is pure and callable
     /// off the main actor, and the value never changes.
-    nonisolated static let staleAfter: TimeInterval = 30
+    nonisolated static let staleAfter: TimeInterval = 10 * 60
 
     @Published private(set) var state: State = .idle
 
@@ -90,8 +91,12 @@ final class ForcePeekReader: ObservableObject {
 
     private func loop() async {
         while !Task.isCancelled {
+            let started = ContinuousClock.now
             await poll()
-            try? await Task.sleep(nanoseconds: UInt64(Self.pollInterval * 1_000_000_000))
+            let remaining = Self.pollInterval - started.duration(to: .now)
+            if remaining > .zero {
+                try? await Task.sleep(for: remaining)
+            }
         }
     }
 

@@ -74,10 +74,11 @@ and sends only two things:
 
 - **The performer's own settings**, so that a printed QR code or an NFC sticker keeps
   working after the performer changes the force number. No personal data.
-- **Live Peek**, off by default. When the performer switches it on, the number the
+- **Live Peek**, off by default. When the performer switches it on, the calculation the
   spectator types into the App Clip is sent so the performer can read it on their own
-  phone. It is a short numeric string, overwritten on every send, never accumulated, and
-  never associated with a person or a device identifier.
+  phone. Entries are short numeric strings and operators, kept briefly for the
+  performance, then expire automatically; the performer can clear them at any time.
+  They are never associated with a person or a device identifier.
 
 There are no accounts, no analytics, no advertising, and no third-party SDKs. Each
 install generates a random identifier and a random token on the device; neither is

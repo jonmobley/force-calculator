@@ -38,7 +38,6 @@ struct ContentView: View {
             }
             .tint(themeColor)
             .onAppear(perform: appear)
-            .onDisappear { peekReader.stop() }
             .onChange(of: selectedPhotoItem) { _, _ in loadSelectedPhoto() }
             .onChange(of: settings.livePeekEnabled) { _, _ in updatePeekReader() }
             .onChange(of: scenePhase) { _, _ in updatePeekReader() }
@@ -204,8 +203,9 @@ struct ContentView: View {
         }
     }
 
-    /// Polls for peeks only while the performer is looking at this screen and live
-    /// peek is on, so nothing runs in the background or when the feature is off.
+    /// Polls while the app is open and live peek is on. Opening the calculator or
+    /// the big display must not stop it; those are still this performance.
+    /// Backgrounding the app does stop it.
     private func updatePeekReader() {
         if settings.livePeekEnabled, scenePhase == .active {
             peekReader.start()

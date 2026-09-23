@@ -27,6 +27,9 @@ public final class PeekReporter: ObservableObject {
 
     private let send: Send?
     private let debounceInterval: TimeInterval
+    private let uploader = PeekUploader { value, entryID, op, performerID in
+        try await ForcePeekService.send(value, entryID: entryID, op: op, id: performerID)
+    }
     private var pending: DispatchWorkItem?
     private var lastReported: String?
 
@@ -38,8 +41,8 @@ public final class PeekReporter: ObservableObject {
     /// - Parameters:
     ///   - debounceInterval: Quiet period after the last keystroke before sending.
     ///   - send: Delivers the entry. Left nil in the app, where it goes to the peek
-    ///     service as a fire-and-forget upload that swallows errors, since a dropped
-    ///     peek must never disturb the calculator. Tests pass their own.
+    ///     service through `PeekUploader`, which retries a dropped upload. A failure
+    ///     must never disturb the calculator. Tests pass their own.
     public init(
         debounceInterval: TimeInterval = 0.4,
         send: Send? = nil
@@ -124,7 +127,7 @@ public final class PeekReporter: ObservableObject {
         let entryID = currentEntryID
         guard let send else {
             let id = performerID
-            Task { try? await ForcePeekService.send(value, entryID: entryID, op: op, id: id) }
+            Task { await uploader.submit(value: value, entryID: entryID, op: op, id: id) }
             return
         }
         send(value, entryID, op)

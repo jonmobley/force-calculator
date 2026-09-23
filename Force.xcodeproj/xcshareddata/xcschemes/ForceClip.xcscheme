@@ -53,7 +53,7 @@
       <EnvironmentVariables>
          <EnvironmentVariable
             key = "_XCAppClipURL"
-            value = "https://appclip.apple.com/id?p=com.mobleypro.mobley.Force.Clip&amp;fn=4556325&amp;ac=3&amp;mt=Date%20and%20Time&amp;dt=MMDDYYXXXX&amp;bt=Orange&amp;pp=false&amp;sws=false"
+            value = "https://appclip.apple.com/id?p=com.mobleypro.mobley.Force.Clip&amp;id=pgTZxIexcAqp1UG8IHahvw"
             isEnabled = "YES">
          </EnvironmentVariable>
       </EnvironmentVariables>
