@@ -12,8 +12,8 @@ import Network
 @MainActor
 final class ForceConfigPublisher: ObservableObject {
     enum State: Equatable {
-        /// No token entered, so nothing is published.
-        case missingToken
+        /// Nothing published yet this launch.
+        case idle
         case publishing
         /// The service matches the app.
         case synced(Date)
@@ -21,19 +21,35 @@ final class ForceConfigPublisher: ObservableObject {
         case outOfDate(reason: String)
     }
 
+    /// Sends one snapshot to the service. Injected so tests exercise the state machine
+    /// without writing a record to the live service on every run.
+    typealias Upload = @Sendable (CalculatorSettings, String, String) async throws -> Void
+
     /// Matches the settings autosave window so one edit produces one upload.
     private static let debounce: TimeInterval = 1.0
 
-    @Published private(set) var state: State = .missingToken
+    @Published private(set) var state: State = .idle
+
+    private let upload: Upload
+
+    init(upload: @escaping Upload = { settings, id, token in
+        try await ForceConfigService.publish(settings, id: id, token: token)
+    }) {
+        self.upload = upload
+    }
 
     private var settings: CalculatorSettings?
     private var changes: AnyCancellable?
     private var inFlight: Task<Void, Never>?
-    private let monitor = NWPathMonitor()
-    private var isMonitoringForRetry = false
+
+    /// Held only while a failed upload is waiting for the network. A cancelled
+    /// `NWPathMonitor` cannot be restarted, so each wait gets a fresh one rather than
+    /// reusing a single instance; reusing one meant that after the first successful
+    /// publish every later failure waited on a dead monitor and never retried.
+    private var retryMonitor: NWPathMonitor?
 
     deinit {
-        monitor.cancel()
+        retryMonitor?.cancel()
     }
 
     /// Begins publishing, and uploads once immediately so the service is known to
@@ -56,19 +72,16 @@ final class ForceConfigPublisher: ObservableObject {
     /// Uploads the current settings, replacing any upload already in flight.
     func publish() {
         guard let settings else { return }
-        guard let token = ConfigTokenStore.load() else {
-            state = .missingToken
-            return
-        }
+        let credentials = PerformerCredentials.current()
 
         inFlight?.cancel()
         state = .publishing
         // Snapshot now so a later edit cannot change what is already in flight.
         let snapshot = settings.snapshot()
 
-        inFlight = Task { [weak self] in
+        inFlight = Task { [weak self, upload] in
             do {
-                try await ForceConfigService.publish(snapshot, token: token)
+                try await upload(snapshot, credentials.identifier, credentials.writeToken)
                 guard !Task.isCancelled else { return }
                 self?.state = .synced(Date())
                 self?.stopRetrying()
@@ -86,12 +99,13 @@ final class ForceConfigPublisher: ObservableObject {
 
     /// Publishes again as soon as a usable network path appears.
     private func retryWhenOnline() {
-        guard !isMonitoringForRetry else { return }
-        isMonitoringForRetry = true
+        guard retryMonitor == nil else { return }
+        let monitor = NWPathMonitor()
+        retryMonitor = monitor
         monitor.pathUpdateHandler = { [weak self] path in
             guard path.status == .satisfied else { return }
             Task { @MainActor [weak self] in
-                guard let self, self.isMonitoringForRetry else { return }
+                guard let self, self.retryMonitor != nil else { return }
                 debugLog("📶 Network back, retrying publish")
                 self.publish()
             }
@@ -100,8 +114,8 @@ final class ForceConfigPublisher: ObservableObject {
     }
 
     private func stopRetrying() {
-        guard isMonitoringForRetry else { return }
-        isMonitoringForRetry = false
+        guard let monitor = retryMonitor else { return }
+        retryMonitor = nil
         monitor.pathUpdateHandler = nil
         monitor.cancel()
     }

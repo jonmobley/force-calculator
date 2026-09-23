@@ -8,20 +8,20 @@ extension CalculatorOperations {
     /// the two calls happen one after the other rather than one inside the other.
     public static func shouldFinishPendingSum(
         _ state: CalculatorState,
-        plusPerfectMode: PlusPerfectState
+        perfectPlusMode: PerfectPlusState
     ) -> Bool {
-        plusPerfectMode != .armed && state.operation != nil && state.userIsTyping
+        !perfectPlusMode.keysAreInert && state.operation != nil && state.userIsTyping
     }
 
     public static func performOperation(
         _ op: CalculatorOperation,
         state: inout CalculatorState,
         settings: CalculatorSettings,
-        plusPerfectHandler: PlusPerfectHandler
+        perfectPlusHandler: PerfectPlusHandler
     ) {
-        // The keypad is inert while armed, so a stray tap cannot disturb the trick.
-        // Clear is the way out.
-        guard plusPerfectHandler.mode != .armed else { return }
+        // The keypad is inert while the phone is turned away, so a stray tap cannot disturb
+        // the trick. Turning the phone back is the way out.
+        guard !perfectPlusHandler.mode.keysAreInert else { return }
         state.previousNumber = CalculatorFormatter.parseDisplay(state.display)
         state.operation = op
         state.userIsTyping = false
@@ -29,26 +29,26 @@ extension CalculatorOperations {
             state.display = CalculatorFormatter.formatResult(state.previousNumber / 100)
             state.operation = nil
         }
-        updatePlusPerfect(
+        updatePerfectPlus(
             op,
             operand: state.previousNumber,
             settings: settings,
-            plusPerfectHandler: plusPerfectHandler
+            perfectPlusHandler: perfectPlusHandler
         )
     }
 
     public static func equals(
         state: inout CalculatorState,
         force: ForceValues,
-        plusPerfectHandler: PlusPerfectHandler
+        perfectPlusHandler: PerfectPlusHandler
     ) {
-        guard plusPerfectHandler.mode != .armed else { return }
-        if plusPerfectHandler.mode == .calculated {
-            showPlusPerfectResult(&state, force: force, plusPerfectHandler: plusPerfectHandler)
+        guard !perfectPlusHandler.mode.keysAreInert else { return }
+        if perfectPlusHandler.mode == .calculated {
+            showPerfectPlusResult(&state, force: force, perfectPlusHandler: perfectPlusHandler)
             return
         }
         // The addition is finishing, so a turn of the phone afterwards must not arm anything.
-        plusPerfectHandler.reset()
+        perfectPlusHandler.reset()
         guard let currentOp = state.operation ?? state.lastOperation else { return }
         if currentOp == .percent { return }
         assignOperands(&state)
@@ -76,40 +76,46 @@ extension CalculatorOperations {
         state.userIsTyping = false
     }
 
-    // MARK: - Plus Perfect
+    // MARK: - Perfect Plus
 
     /// Plus leaves the trick pending so the phone can be turned over afterwards.
     /// Every other operation stands the trick down.
-    private static func updatePlusPerfect(
+    private static func updatePerfectPlus(
         _ op: CalculatorOperation,
         operand: Double,
         settings: CalculatorSettings,
-        plusPerfectHandler: PlusPerfectHandler
+        perfectPlusHandler: PerfectPlusHandler
     ) {
-        let shouldMarkPending = PlusPerfectMath.shouldMarkPendingAdd(
-            plusPerfectEnabled: settings.plusPerfectEnabled,
+        let shouldMarkPending = PerfectPlusMath.shouldMarkPendingAdd(
+            perfectPlusEnabled: settings.perfectPlusEnabled,
             isAdd: op == .add
         )
         guard shouldMarkPending else {
-            plusPerfectHandler.reset()
+            if op == .add {
+                debugLog("🎭 Perfect Plus: plus pressed but the setting is off, adding normally")
+            }
+            perfectPlusHandler.reset()
             return
         }
-        plusPerfectHandler.markPendingAdd(operand: operand)
+        perfectPlusHandler.markPendingAdd(operand: operand)
     }
 
     /// Lands the reveal as an ordinary finished calculation. The pending add has to go with
     /// it: left in place, a second equals would add the saved number to the force and carry
     /// the display off the number the spectator was just shown. The activation count starts
     /// again too, so the keys that follow the reveal are honest ones.
-    private static func showPlusPerfectResult(
+    private static func showPerfectPlusResult(
         _ state: inout CalculatorState,
         force: ForceValues,
-        plusPerfectHandler: PlusPerfectHandler
+        perfectPlusHandler: PerfectPlusHandler
     ) {
-        let forcedNumber = Double(force.number)
+        // The number the addend was built from, not a fresh reading of it. In Date and Time
+        // mode the clock moves on, and landing somewhere else would leave the spectator with
+        // a sum that does not add up. Read before the reset, which drops it.
+        let forcedNumber = Double((perfectPlusHandler.frozenForce ?? force).number)
         state = CalculatorState()
         state.display = CalculatorFormatter.formatResult(forcedNumber)
         state.previousNumber = forcedNumber
-        plusPerfectHandler.reset()
+        perfectPlusHandler.reset()
     }
 }

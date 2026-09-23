@@ -2,6 +2,8 @@ import SwiftUI
 import PhotosUI
 import ForceShared
 
+/// Performer home. Each setting opens its own page from a row with an icon,
+/// a title, and a chevron, in the same shape as Apple Settings.
 struct ContentView: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @EnvironmentObject private var configPublisher: ForceConfigPublisher
@@ -11,32 +13,29 @@ struct ContentView: View {
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var backgroundImage: UIImage?
     @State private var showingCalculator = false
-    @State private var showQRCodeView = false
+    @State private var showingPeekStage = false
+    @State private var didApplyLaunchChoice = false
 
     private var themeColor: Color { settings.buttonTheme.color }
 
     var body: some View {
-        NavigationView {
-            VStack(spacing: 0) {
-                Form {
-                    ForceCalculatorSettingsSection(forceNumberText: $forceNumberText)
-                    ForcePeekSection(reader: peekReader)
-                    ForcePhonePerformanceSection(
-                        selectedPhotoItem: $selectedPhotoItem,
-                        backgroundImage: backgroundImage,
-                        onDelete: deleteBackgroundImage
-                    )
-                    ForceSyncSection(publisher: configPublisher)
-                    Section {
-                        ForceQRCodeButton(tint: themeColor, action: { showQRCodeView = true })
-                    } header: {
-                        Text("Share App Clip")
-                    }
-                }
-                .scrollDismissesKeyboard(.interactively)
+        NavigationStack {
+            Form {
+                trickLinks
+                performanceLinks
+                appLinks
+            }
+            .scrollDismissesKeyboard(.interactively)
+            // A safe-area inset rather than a sibling in a stack: stacked, the bar simply
+            // covered the end of the form, leaving the last row half hidden and awkward
+            // to tap even scrolled all the way down.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
                 openCalculatorBar
             }
             .navigationTitle("Force")
+            .navigationDestination(for: ForceSettingsPage.self) { route in
+                page(for: route)
+            }
             .tint(themeColor)
             .onAppear(perform: appear)
             .onDisappear { peekReader.stop() }
@@ -48,14 +47,124 @@ struct ContentView: View {
                     forceNumberText = String(newValue)
                 }
             }
+            .background {
+                ForcePeekMonitor(reader: peekReader, showingStage: $showingPeekStage)
+            }
         }
         .fullScreenCover(isPresented: $showingCalculator) {
             CalculatorView().environmentObject(settings)
         }
-        .sheet(isPresented: $showQRCodeView) {
-            LazyQRCodeView().environmentObject(settings)
+        .fullScreenCover(isPresented: $showingPeekStage) {
+            PeekStageView(reader: peekReader)
         }
     }
+
+    // MARK: - List
+
+    private var trickLinks: some View {
+        Section {
+            settingsLink(.force, title: "Force", symbol: "wand.and.stars",
+                         color: .purple, detail: forceDetail)
+            settingsLink(.perfectPlus, title: "Perfect Plus", symbol: "plus",
+                         color: .green, detail: onOff(settings.perfectPlusEnabled))
+            settingsLink(.livePeek, title: "Live Peek", symbol: "eye",
+                         color: .blue, detail: livePeekDetail)
+        }
+    }
+
+    private var performanceLinks: some View {
+        Section {
+            settingsLink(.phone, title: "Perform on Your Phone", symbol: "iphone",
+                         color: .indigo, detail: phoneDetail)
+            settingsLink(.share, title: "QR Code & NFC", symbol: "qrcode",
+                         color: .teal, detail: nil)
+        }
+    }
+
+    private var appLinks: some View {
+        Section {
+            settingsLink(.appearance, title: "Button Theme", symbol: "paintpalette",
+                         color: .pink, detail: settings.buttonTheme.rawValue)
+            settingsLink(.sync, title: "Sync", symbol: "arrow.triangle.2.circlepath",
+                         color: Color(.systemGray), detail: syncDetail)
+        }
+    }
+
+    private func settingsLink(
+        _ route: ForceSettingsPage,
+        title: String,
+        symbol: String,
+        color: Color,
+        detail: String?
+    ) -> some View {
+        NavigationLink(value: route) {
+            SettingsLinkRow(title: title, systemImage: symbol, color: color, detail: detail)
+        }
+    }
+
+    @ViewBuilder
+    private func page(for route: ForceSettingsPage) -> some View {
+        switch route {
+        case .force:
+            ForceTrickPage(forceNumberText: $forceNumberText)
+        case .perfectPlus:
+            ForcePerfectPlusPage()
+        case .livePeek:
+            ForceLivePeekPage(reader: peekReader, showingStage: $showingPeekStage)
+        case .phone:
+            ForcePhonePage(
+                selectedPhotoItem: $selectedPhotoItem,
+                backgroundImage: backgroundImage,
+                onDelete: deleteBackgroundImage
+            )
+        case .share:
+            QRCodeNFCView()
+        case .appearance:
+            ForceAppearancePage()
+        case .sync:
+            ForceSyncPage(publisher: configPublisher)
+        }
+    }
+
+    // MARK: - Row values
+
+    private var forceDetail: String {
+        switch settings.magicTrickMode {
+        case .forceNumber:
+            return forceNumberText.isEmpty ? "Not Set" : forceNumberText
+        case .exactDateTime:
+            return "Date and Time"
+        }
+    }
+
+    private var livePeekDetail: String {
+        guard settings.livePeekEnabled else { return "Off" }
+        if case .value(let peek) = peekReader.state, let latest = peek.latest {
+            return latest.value
+        }
+        return "On"
+    }
+
+    private var phoneDetail: String? {
+        if settings.startWithScreenshot { return "Screenshot" }
+        if settings.openToCalculator { return "Calculator" }
+        return nil
+    }
+
+    private var syncDetail: String {
+        switch configPublisher.state {
+        case .idle: return "Not Published"
+        case .publishing: return "Publishing"
+        case .synced: return "Live"
+        case .outOfDate: return "Out of Date"
+        }
+    }
+
+    private func onOff(_ enabled: Bool) -> String {
+        enabled ? "On" : "Off"
+    }
+
+    // MARK: - Calculator bar
 
     private var openCalculatorBar: some View {
         VStack(spacing: 0) {
@@ -76,13 +185,23 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Lifecycle
+
     private func appear() {
         forceNumberText = String(settings.forceNumber)
+        applyLaunchChoiceOnce()
+        updatePeekReader()
+        Task { await loadBackgroundImageAsync() }
+    }
+
+    /// Opening the calculator at launch has to happen once. Later appearances,
+    /// such as dismissing the big peek display, must not open it again.
+    private func applyLaunchChoiceOnce() {
+        guard !didApplyLaunchChoice else { return }
+        didApplyLaunchChoice = true
         if settings.openToCalculator {
             showingCalculator = true
         }
-        updatePeekReader()
-        Task { await loadBackgroundImageAsync() }
     }
 
     /// Polls for peeks only while the performer is looking at this screen and live
@@ -114,26 +233,6 @@ struct ContentView: View {
     private func deleteBackgroundImage() {
         backgroundImage = nil
         ImageStorageManager.shared.deleteImage()
-    }
-}
-
-struct LazyQRCodeView: View {
-    @EnvironmentObject private var settings: CalculatorSettings
-    @State private var isReady = false
-
-    var body: some View {
-        Group {
-            if isReady {
-                NavigationView { QRCodeNFCView().environmentObject(settings) }
-            } else {
-                ProgressView("Loading...")
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                            isReady = true
-                        }
-                    }
-            }
-        }
     }
 }
 

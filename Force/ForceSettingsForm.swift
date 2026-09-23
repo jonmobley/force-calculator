@@ -1,8 +1,8 @@
 import SwiftUI
 import ForceShared
 
-/// Magician controls for the force, theme, launch, and Plus Perfect.
-struct ForceCalculatorSettingsSection: View {
+/// Trick mode, the forced value, and how many equals presses reveal it.
+struct ForceTrickPage: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @Binding var forceNumberText: String
     @State private var isEditingForceNumber = false
@@ -10,26 +10,15 @@ struct ForceCalculatorSettingsSection: View {
     private var themeColor: Color { settings.buttonTheme.color }
 
     var body: some View {
-        Section(header: Text("Calculator Settings")) {
-            Toggle("Open to Calculator", isOn: $settings.openToCalculator)
-            themePicker
-            modePicker
-            trickValue
-            activationPicker
-            plusPerfectToggle
-            screenshotToggle
-            livePeekToggle
-        }
-    }
-
-    private var themePicker: some View {
-        Picker("Button Theme", selection: $settings.buttonTheme) {
-            ForEach(ButtonTheme.allCases, id: \.self) { theme in
-                Text(theme.rawValue).tag(theme)
+        Form {
+            Section {
+                modePicker
+                trickValue
+                activationPicker
             }
         }
-        .pickerStyle(.menu)
-        .tint(themeColor)
+        .navigationTitle("Force")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var modePicker: some View {
@@ -57,13 +46,13 @@ struct ForceCalculatorSettingsSection: View {
         } label: {
             HStack {
                 Text("Force Number")
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.primary)
                 Spacer()
                 Text(forceNumberText.isEmpty ? "Not set" : forceNumberText)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(forceNumberColor)
                 Image(systemName: "chevron.right")
                     .font(.footnote.weight(.semibold))
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Color(.tertiaryLabel))
             }
             .contentShape(Rectangle())
         }
@@ -74,6 +63,17 @@ struct ForceCalculatorSettingsSection: View {
                 onCommit: updateForceNumber
             )
         }
+    }
+
+    /// Keeps the placeholder muted while a chosen number reads at full strength, in the
+    /// same theme colour the Pickers above and below use for their own values.
+    ///
+    /// Absolute colours throughout this row, never `.primary` or `.tertiary`. Those are
+    /// hierarchical styles, and inside a Button in a Form they resolve against the row's
+    /// tint rather than the label colour, which turned the whole row, title included,
+    /// theme-coloured and left it reading as if every word were the value.
+    private var forceNumberColor: Color {
+        forceNumberText.isEmpty ? Color.secondary : themeColor
     }
 
     private var dateFormatPicker: some View {
@@ -101,37 +101,72 @@ struct ForceCalculatorSettingsSection: View {
         }
     }
 
-    private var plusPerfectToggle: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Toggle("Plus Perfect", isOn: $settings.plusPerfectEnabled)
-            Text("Press +, then turn the phone over and back. Without the turn, + adds normally.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-
-    private var screenshotToggle: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Toggle("Start with Screenshot", isOn: $settings.startWithScreenshot)
-            Text("App starts showing screenshot, tap anywhere to open calculator")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-
-    private var livePeekToggle: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Toggle("Live Peek", isOn: $settings.livePeekEnabled)
-            Text("See the number the spectator types in the App Clip, live, without them pressing equals.")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-
     private func updateForceNumber(_ newValue: String) {
         guard let number = Int(newValue.filter(\.isNumber)) else { return }
         forceNumberText = String(number)
         settings.forceNumber = number
+    }
+}
+
+/// Perfect Plus and the buzz that goes with it.
+struct ForcePerfectPlusPage: View {
+    @EnvironmentObject private var settings: CalculatorSettings
+
+    var body: some View {
+        Form {
+            Section {
+                perfectPlusToggle
+                perfectPlusHapticsToggle
+            }
+        }
+        .navigationTitle("Perfect Plus")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var perfectPlusToggle: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Perfect Plus", isOn: $settings.perfectPlusEnabled)
+            Text("Press +, then turn the phone over. The number lands a second after the "
+                + "last touch, so it is already there when the phone comes back. Without the "
+                + "turn, + adds normally.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    /// Only worth showing once the trick it belongs to is on.
+    @ViewBuilder
+    private var perfectPlusHapticsToggle: some View {
+        if settings.perfectPlusEnabled {
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle("Perfect Plus Vibration", isOn: $settings.perfectPlusHapticsEnabled)
+                Text("Buzzes when the turn arms the trick and again when the number is ready. "
+                    + "Turn it off when the spectator is the one holding the phone.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+        }
+    }
+}
+
+/// Operator-key color.
+struct ForceAppearancePage: View {
+    @EnvironmentObject private var settings: CalculatorSettings
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Button Theme", selection: $settings.buttonTheme) {
+                    ForEach(ButtonTheme.allCases, id: \.self) { theme in
+                        Text(theme.rawValue).tag(theme)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(settings.buttonTheme.color)
+            }
+        }
+        .navigationTitle("Button Theme")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

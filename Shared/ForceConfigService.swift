@@ -10,10 +10,6 @@ public enum ForceConfigService {
     /// Deployed Cloudflare Worker backed by D1.
     public static let baseURL = URL(string: "https://force-config.jonmobley.workers.dev")!
 
-    /// Identifies whose settings to read. One performer today; the service keys
-    /// on this value so more can be added without a client change.
-    public static let performerID = "default"
-
     /// Kept short: this runs during App Clip launch, where latency is visible.
     public static let fetchTimeout: TimeInterval = 4
 
@@ -33,8 +29,8 @@ public enum ForceConfigService {
     /// - Throws: `ServiceError.notPublished` when the performer has never
     ///   published, which callers should treat as "keep what you already have".
     public static func fetch(
-        session: URLSession = .shared,
-        id: String = performerID
+        id: String,
+        session: URLSession = .shared
     ) async throws -> CalculatorSettings {
         var request = URLRequest(url: try configURL(id: id))
         request.httpMethod = "GET"
@@ -57,9 +53,9 @@ public enum ForceConfigService {
     /// Replaces the stored settings. Only the performer's own app calls this.
     public static func publish(
         _ settings: CalculatorSettings,
+        id: String,
         token: String,
-        session: URLSession = .shared,
-        id: String = performerID
+        session: URLSession = .shared
     ) async throws {
         var request = URLRequest(url: try configURL(id: id))
         request.httpMethod = "PUT"

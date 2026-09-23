@@ -15,17 +15,33 @@ once stays correct forever.
 
 ## Endpoints
 
-| Method | Path             | Auth         | Purpose                          |
-| ------ | ---------------- | ------------ | -------------------------------- |
-| `GET`  | `/v1/config`     | none         | Current settings, read by clip   |
-| `PUT`  | `/v1/config`     | bearer token | Replace settings, called by app  |
-| `GET`  | `/health`        | none         | Liveness probe                   |
+| Method | Path         | Auth              | Purpose                             |
+| ------ | ------------ | ----------------- | ----------------------------------- |
+| `GET`  | `/v1/config` | none              | Current settings, read by clip      |
+| `PUT`  | `/v1/config` | that id's token   | Replace settings, called by app     |
+| `PUT`  | `/v1/peek`   | none              | Report the spectator's number       |
+| `GET`  | `/v1/peek`   | that id's token   | Latest reported number, read by app |
+| `GET`  | `/health`    | none              | Liveness probe                      |
 
-Both config routes accept an optional `?id=` parameter. The app uses `default`.
-The column is a `TEXT` primary key so more performers can be added later without
-a schema change.
+Every route takes `?id=<performer>`, naming whose record to act on.
 
 Deployed at `https://force-config.jonmobley.workers.dev`.
+
+## One record per performer
+
+Each install generates its own performer id and write token on first launch; there
+is nothing for the performer to enter. The id is public and travels on the App Clip
+URL printed into every QR code and NFC tag. The token stays in the device Keychain.
+
+The first `PUT /v1/config` for an id stores a SHA-256 hash of its token in
+`config.token_hash`, claiming that record. Afterwards only the same token may write
+it or read its peeks.
+
+Before this, every install shared the id `default` behind one service-wide token, so
+a second performer changing their force number overwrote the first performer's, and
+live peek returned whichever spectator had typed most recently regardless of who was
+watching. Rows written back then have a `NULL` hash and stay on `WRITE_TOKEN`, so the
+install that owns `default` is not locked out by the upgrade.
 
 ## Why D1 instead of KV
 
@@ -37,12 +53,19 @@ intermediary can serve an old force number.
 
 ## Security model
 
-The write token gates all writes and lives only as a Worker secret and in the
-performer's device keychain — it is never committed. Reads are unauthenticated
-because the clip runs on an arbitrary spectator's device and has no way to hold a
-credential. The payload is therefore readable by anyone who knows the URL. That
-is not a regression: previously the force number was written in plain text onto
-the NFC tag itself, where any tag reader could see it.
+Writes are gated on the token bound to the id being written, which lives only in
+the performer's device Keychain and is stored here as a hash. `WRITE_TOKEN` remains
+only to serve the pre-existing `default` row.
+
+Config reads are unauthenticated because the clip runs on an arbitrary spectator's
+device and has no way to hold a credential, so a payload is readable by anyone who
+knows the id. That is not a regression: the force number used to be written in plain
+text onto the NFC tag itself, where any tag reader could see it. Ids are 128 bits of
+randomness precisely because reading needs no token.
+
+Peek writes are unauthenticated for the same reason — the clip sending the
+spectator's number can never hold a token. Peek *reads* require the id's token, so
+only the performer sees what a spectator typed.
 
 ## Common tasks
 
@@ -56,7 +79,7 @@ npm run deploy
 npm run migrate          # remote
 npm run migrate:local    # local
 
-# Rotate the write token (then update it in the app)
+# Rotate the legacy service-wide token, which now only covers the `default` row
 npx wrangler secret put WRITE_TOKEN
 
 # Validate and typecheck
@@ -71,5 +94,5 @@ npm run tail
 
 ```bash
 npx wrangler d1 execute force-config --remote \
-  --command "SELECT id, updated_at, payload FROM config"
+  --command "SELECT id, updated_at, token_hash IS NOT NULL AS claimed, payload FROM config"
 ```

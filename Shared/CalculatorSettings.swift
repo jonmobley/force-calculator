@@ -84,7 +84,11 @@ public class CalculatorSettings: ObservableObject, Codable {
     @Published public var buttonTheme: ButtonTheme = .orange
     @Published public var openToCalculator: Bool = false
     @Published public var dateTimeFormat: DateTimeFormat = .mmDDYY
-    @Published public var plusPerfectEnabled: Bool = false
+    @Published public var perfectPlusEnabled: Bool = false
+    /// Whether Perfect Plus buzzes when the turn arms it and when the number is staged.
+    /// On by default, because the buzz is how the performer knows the phone can come back.
+    /// Off suits handing the phone to the spectator for the turn, where they would feel it.
+    @Published public var perfectPlusHapticsEnabled: Bool = true
     @Published public var startWithScreenshot: Bool = false
     /// When on, the App Clip reports the spectator's typed number back to the
     /// performer's app. Off by default so the calculator sends nothing unless the
@@ -96,8 +100,13 @@ public class CalculatorSettings: ObservableObject, Codable {
 
     enum CodingKeys: String, CodingKey {
         case theme, forceNumber, activationCount, currentCount, magicTrickMode
-        case buttonTheme, openToCalculator, dateTimeFormat, plusPerfectEnabled, startWithScreenshot
+        case buttonTheme, openToCalculator, dateTimeFormat, startWithScreenshot
         case livePeekEnabled
+        // The trick was called Plus Perfect when these were written. Renaming the stored
+        // keys would read as absent and quietly turn the trick off, both in the record
+        // already saved on the performer's phone and in the settings the clip fetches.
+        case perfectPlusEnabled = "plusPerfectEnabled"
+        case perfectPlusHapticsEnabled = "plusPerfectHapticsEnabled"
     }
 
     public init() {}
@@ -112,7 +121,9 @@ public class CalculatorSettings: ObservableObject, Codable {
         buttonTheme = try container.decodeIfPresent(ButtonTheme.self, forKey: .buttonTheme) ?? .orange
         openToCalculator = try container.decodeIfPresent(Bool.self, forKey: .openToCalculator) ?? false
         dateTimeFormat = try container.decodeIfPresent(DateTimeFormat.self, forKey: .dateTimeFormat) ?? .mmDDYY
-        plusPerfectEnabled = try container.decodeIfPresent(Bool.self, forKey: .plusPerfectEnabled) ?? false
+        perfectPlusEnabled = try container.decodeIfPresent(Bool.self, forKey: .perfectPlusEnabled) ?? false
+        perfectPlusHapticsEnabled = try container
+            .decodeIfPresent(Bool.self, forKey: .perfectPlusHapticsEnabled) ?? true
         startWithScreenshot = try container.decodeIfPresent(Bool.self, forKey: .startWithScreenshot) ?? false
         livePeekEnabled = try container.decodeIfPresent(Bool.self, forKey: .livePeekEnabled) ?? false
     }
@@ -127,14 +138,15 @@ public class CalculatorSettings: ObservableObject, Codable {
         try container.encode(buttonTheme, forKey: .buttonTheme)
         try container.encode(openToCalculator, forKey: .openToCalculator)
         try container.encode(dateTimeFormat, forKey: .dateTimeFormat)
-        try container.encode(plusPerfectEnabled, forKey: .plusPerfectEnabled)
+        try container.encode(perfectPlusEnabled, forKey: .perfectPlusEnabled)
+        try container.encode(perfectPlusHapticsEnabled, forKey: .perfectPlusHapticsEnabled)
         try container.encode(startWithScreenshot, forKey: .startWithScreenshot)
         try container.encode(livePeekEnabled, forKey: .livePeekEnabled)
     }
 
     // MARK: - Load and save
 
-    /// Copies every stored field, including screenshot launch and Plus Perfect.
+    /// Copies every stored field, including screenshot launch and Perfect Plus.
     public func applyStored(_ stored: CalculatorSettings) {
         isApplyingStoredValues = true
         defer { isApplyingStoredValues = false }
@@ -146,7 +158,8 @@ public class CalculatorSettings: ObservableObject, Codable {
         buttonTheme = stored.buttonTheme
         openToCalculator = stored.openToCalculator
         dateTimeFormat = stored.dateTimeFormat
-        plusPerfectEnabled = stored.plusPerfectEnabled
+        perfectPlusEnabled = stored.perfectPlusEnabled
+        perfectPlusHapticsEnabled = stored.perfectPlusHapticsEnabled
         startWithScreenshot = stored.startWithScreenshot
         livePeekEnabled = stored.livePeekEnabled
     }

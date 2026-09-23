@@ -11,21 +11,21 @@ final class TestCalculator {
     private var calc = CalculatorState()
 
     private let settings = CalculatorSettings()
-    private let plusPerfectHandler = PlusPerfectHandler()
+    private let perfectPlusHandler = PerfectPlusHandler()
     private let quickForce = QuickForceEntry()
 
     var display: String { calc.display }
-    var plusPerfectMode: PlusPerfectState { plusPerfectHandler.mode }
+    var perfectPlusMode: PerfectPlusState { perfectPlusHandler.mode }
     var quickEntryStage: QuickForceEntry.Stage { quickForce.stage }
 
     /// What the next equals press would force, resolved the way the views resolve it.
     var force: ForceValues { quickForce.values(settings: settings) }
 
-    init(forceNumber: Int, activationCount: Int, plusPerfectEnabled: Bool = true) {
+    init(forceNumber: Int, activationCount: Int, perfectPlusEnabled: Bool = true) {
         settings.forceNumber = forceNumber
         settings.activationCount = activationCount
         settings.magicTrickMode = .forceNumber
-        settings.plusPerfectEnabled = plusPerfectEnabled
+        settings.perfectPlusEnabled = perfectPlusEnabled
     }
 
     /// Stands in for sums the spectator has already done, each of which moves the calculator
@@ -50,19 +50,19 @@ final class TestCalculator {
         CalculatorOperations.digitPressed(
             digit,
             state: &calc,
-            plusPerfectMode: plusPerfectHandler.mode
+            perfectPlusMode: perfectPlusHandler.mode
         )
     }
 
     func press(_ op: CalculatorOperation) {
-        if CalculatorOperations.shouldFinishPendingSum(calc, plusPerfectMode: plusPerfectHandler.mode) {
+        if CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
             equals()
         }
         CalculatorOperations.performOperation(
             op,
             state: &calc,
             settings: settings,
-            plusPerfectHandler: plusPerfectHandler
+            perfectPlusHandler: perfectPlusHandler
         )
     }
 
@@ -71,7 +71,7 @@ final class TestCalculator {
         CalculatorOperations.equals(
             state: &calc,
             force: force,
-            plusPerfectHandler: plusPerfectHandler
+            perfectPlusHandler: perfectPlusHandler
         )
     }
 
@@ -92,10 +92,10 @@ final class TestCalculator {
     }
 
     private func resetEntry() {
-        CalculatorOperations.clearAll(state: &calc, plusPerfectHandler: plusPerfectHandler)
+        CalculatorOperations.clearAll(state: &calc, perfectPlusHandler: perfectPlusHandler)
     }
 
-    // MARK: - Plus Perfect
+    // MARK: - Perfect Plus
 
     /// Runs the trick through: the number, the plus, the turn of the phone, and the equals
     /// that shows the force.
@@ -108,6 +108,20 @@ final class TestCalculator {
 
     /// Stands in for the motion callback that fires when the phone comes back upright.
     func turnPhoneOverAndBack() {
-        plusPerfectHandler.calculatePerfectAddend(state: &calc, force: force)
+        perfectPlusHandler.calculatePerfectAddend(state: &calc, force: force)
+    }
+
+    /// Stands in for the phone being turned over and then left alone: the number goes up
+    /// behind the turn, with the keys still inert because the phone has not come back.
+    func stageTheNumberBehindTheTurn(savedNumber: Int) {
+        type(String(savedNumber))
+        press(.add)
+        perfectPlusHandler.calculatePerfectAddend(state: &calc, force: force)
+        perfectPlusHandler.mode = .staged
+    }
+
+    /// Stands in for the turn back, which once the number is staged only hands the keys over.
+    func turnPhoneBack() {
+        perfectPlusHandler.mode = .calculated
     }
 }

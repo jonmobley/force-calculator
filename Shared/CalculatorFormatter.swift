@@ -2,6 +2,14 @@ import Foundation
 
 /// Display parsing and grouping for the host and the App Clip.
 public struct CalculatorFormatter {
+    /// Widest number the readout will spell out before falling back to scientific notation.
+    ///
+    /// Stock iOS stops at nine, and typing is still capped there, but a forced value has to
+    /// be able to reach ten: Date and Time mode builds `MMDDYY` plus a four-digit time, which
+    /// runs to ten digits from October onwards and on any day past the ninth. At nine those
+    /// reveals came out as `1.122e9` and the trick died on screen. Ten digits still read as a
+    /// calculator result, so the ceiling moves rather than the effect.
+    public static let maxDisplayDigits = 10
     /// Inserts grouping separators while the spectator is typing.
     public static func formatDisplay(_ displayString: String) -> String {
         if displayString == "0" || displayString.isEmpty {
@@ -22,18 +30,21 @@ public struct CalculatorFormatter {
         return Double(cleaned) ?? 0
     }
 
-    /// Formats a calculation result for the 9-digit display.
+    /// Formats a calculation result for the display.
     public static func formatResult(_ result: Double) -> String {
         if result.isNaN { return "Error" }
         if result.isInfinite { return result < 0 ? "-∞" : "∞" }
         let magnitude = abs(result)
-        if magnitude > 999_999_999 || (magnitude < 0.000_001 && magnitude > 0) {
+        if magnitude > largestWholeDisplayable || (magnitude < 0.000_001 && magnitude > 0) {
             return scientific(result)
         }
         let formatted = grouped(result)
         let digitCount = formatted.filter { $0.isNumber }.count
-        return digitCount > 9 ? scientific(result) : formatted
+        return digitCount > maxDisplayDigits ? scientific(result) : formatted
     }
+
+    /// Largest whole number that still fits, as a value rather than a digit count.
+    private static let largestWholeDisplayable = pow(10.0, Double(maxDisplayDigits)) - 1
 
     // MARK: - Formatting
 
@@ -61,7 +72,7 @@ public struct CalculatorFormatter {
             return formatter.string(from: NSNumber(value: result)) ?? String(format: "%.0f", result)
         }
         let integerDigits = String(Int(abs(result))).count
-        formatter.maximumFractionDigits = max(9 - integerDigits - 1, 1)
+        formatter.maximumFractionDigits = max(maxDisplayDigits - integerDigits - 1, 1)
         formatter.minimumFractionDigits = 0
         return formatter.string(from: NSNumber(value: result)) ?? String(result)
     }

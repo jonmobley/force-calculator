@@ -7,6 +7,8 @@ import ForceShared
 final class ConfigPublishingTests: XCTestCase {
     override func tearDown() {
         ConfigTokenStore.delete()
+        ConfigTokenStore.delete(account: ConfigTokenStore.performerAccount)
+        PerformerCredentials.forgetCache()
         super.tearDown()
     }
 
@@ -32,27 +34,65 @@ final class ConfigPublishingTests: XCTestCase {
         XCTAssertNil(ConfigTokenStore.load(), "Whitespace must not be stored as a token")
     }
 
-    /// Without a token nothing is published, and the UI must say so rather than
-    /// implying the service is up to date.
-    func testPublisherReportsMissingTokenAndDoesNotClaimSynced() {
+    /// Publishing needs no setup from the performer, so the very first launch has to
+    /// reach the service on its own rather than waiting for a token to be pasted in.
+    func testPublisherStartsPublishingWithNoSetup() {
         ConfigTokenStore.delete()
-        let publisher = ForceConfigPublisher()
-        let settings = CalculatorSettings()
+        ConfigTokenStore.delete(account: ConfigTokenStore.performerAccount)
+        PerformerCredentials.forgetCache()
 
-        publisher.start(observing: settings)
-
-        XCTAssertEqual(publisher.state, .missingToken)
-    }
-
-    func testPublisherStartsPublishingOnceATokenExists() {
-        ConfigTokenStore.save("token-for-test")
-        let publisher = ForceConfigPublisher()
-        let settings = CalculatorSettings()
-
-        publisher.start(observing: settings)
+        let publisher = ForceConfigPublisher { _, _, _ in }
+        publisher.start(observing: CalculatorSettings())
 
         // The upload is asynchronous; what matters here is that it was attempted
         // at launch rather than waiting for the first edit.
         XCTAssertEqual(publisher.state, .publishing)
+    }
+
+    /// Credentials are generated once and then reused, so the id printed on a QR code
+    /// stays the same across launches. A changing id would strand every tag in the wild.
+    func testCredentialsAreGeneratedOnceAndKept() {
+        ConfigTokenStore.delete()
+        ConfigTokenStore.delete(account: ConfigTokenStore.performerAccount)
+        PerformerCredentials.forgetCache()
+
+        let first = PerformerCredentials.current()
+        XCTAssertTrue(PerformerID.isValid(first.identifier))
+        XCTAssertFalse(first.writeToken.isEmpty)
+        XCTAssertNotEqual(first.identifier, first.writeToken)
+
+        PerformerCredentials.forgetCache()
+        let second = PerformerCredentials.current()
+        XCTAssertEqual(first.identifier, second.identifier)
+        XCTAssertEqual(first.writeToken, second.writeToken)
+    }
+
+    /// A fresh install must not land on the shared id: that was the record everybody
+    /// used to write to, and joining it would put this performer back in the crowd.
+    func testAFreshInstallDoesNotTakeTheSharedID() {
+        ConfigTokenStore.delete()
+        ConfigTokenStore.delete(account: ConfigTokenStore.performerAccount)
+        PerformerCredentials.forgetCache()
+
+        XCTAssertNotEqual(PerformerCredentials.current().identifier, PerformerID.shared)
+    }
+
+    /// An install that was already publishing keeps the shared id, because its QR codes
+    /// and NFC stickers all point at it.
+    func testAnInstallThatAlreadyPublishedKeepsItsRecord() {
+        ConfigTokenStore.delete(account: ConfigTokenStore.performerAccount)
+        ConfigTokenStore.save("token-from-before-the-upgrade")
+        PerformerCredentials.forgetCache()
+
+        let credentials = PerformerCredentials.current()
+        XCTAssertEqual(credentials.identifier, PerformerID.shared)
+        XCTAssertEqual(credentials.writeToken, "token-from-before-the-upgrade")
+    }
+
+    /// Two installs must never collide, or they are back to sharing one record.
+    func testGeneratedIDsAreDistinct() {
+        let ids = (0..<200).map { _ in PerformerID.generate() }
+        XCTAssertEqual(Set(ids).count, ids.count)
+        XCTAssertTrue(ids.allSatisfy(PerformerID.isValid))
     }
 }

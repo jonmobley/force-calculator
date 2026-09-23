@@ -4,6 +4,7 @@ import ForceShared
 
 struct CalculatorView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
 
     /// The whole calculator session, held as one value so the shared key handling takes a
     /// single binding.
@@ -16,8 +17,8 @@ struct CalculatorView: View {
     @State private var modeHideWorkItem: DispatchWorkItem?
 
     
-    // Plus Perfect state lives on the handler, which orientation changes drive directly.
-    @StateObject private var plusPerfectHandler = PlusPerfectHandler()
+    // Perfect Plus state lives on the handler, which orientation changes drive directly.
+    @StateObject private var perfectPlusHandler = PerfectPlusHandler()
 
     // Covert force entry from the clock button, held here so it lasts a session and no longer.
     @StateObject private var quickForce = QuickForceEntry()
@@ -65,22 +66,47 @@ struct CalculatorView: View {
             }
         }
         .background(Color.black.ignoresSafeArea())
+        .simultaneousGesture(screenTouch)
         .onAppear {
             debugLog("🧮 CalculatorView: onAppear called")
             calc.forceCount = 0
-            debugLog("🎭 Plus Perfect: Starting orientation monitoring (enabled: \(settings.plusPerfectEnabled))")
-            plusPerfectHandler.startMonitoring {
-                calculatePerfectAddend()
-            }
+            startPerfectPlus()
             debugLog("✅ CalculatorView: onAppear completed")
         }
+        // Gravity is sampled ten times a second, which is worth nothing once the calculator
+        // is off screen and costs battery in a pocket. Only the sampling stops; a pending or
+        // armed trick keeps its state and picks up again on the way back.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                startPerfectPlus()
+            } else {
+                perfectPlusHandler.stopMonitoring()
+            }
+        }
         .onDisappear {
-            plusPerfectHandler.stopMonitoring()
+            perfectPlusHandler.stopMonitoring()
             modeHideWorkItem?.cancel()
             // The override is good for one sitting only, so closing the calculator hands
             // the trick back to the saved settings.
             quickForce.reset()
         }
+    }
+
+    private func startPerfectPlus() {
+        debugLog("🎭 Perfect Plus: monitoring (enabled: \(settings.perfectPlusEnabled))")
+        perfectPlusHandler.startMonitoring(
+            hapticsEnabled: settings.perfectPlusHapticsEnabled
+        ) {
+            calculatePerfectAddend()
+        }
+    }
+
+    /// Every touch on the calculator, keys included, reported so an armed Perfect Plus can
+    /// hold the number back until the phone has been left alone. Recognised alongside the
+    /// keys rather than instead of them, so the keypad still works normally.
+    private var screenTouch: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in perfectPlusHandler.noteScreenTouch() }
     }
 
     // MARK: - Covert force entry
@@ -106,20 +132,20 @@ struct CalculatorView: View {
         CalculatorOperations.digitPressed(
             digit,
             state: &calc,
-            plusPerfectMode: plusPerfectHandler.mode
+            perfectPlusMode: perfectPlusHandler.mode
         )
-        if !isPlusPerfectArmed { hasEntryToClear = true }
+        if !perfectPlusHoldsTheKeys { hasEntryToClear = true }
     }
     
     private func decimalPressed() {
         CalculatorOperations.decimalPressed(
             state: &calc,
-            plusPerfectMode: plusPerfectHandler.mode
+            perfectPlusMode: perfectPlusHandler.mode
         )
-        if !isPlusPerfectArmed { hasEntryToClear = true }
+        if !perfectPlusHoldsTheKeys { hasEntryToClear = true }
     }
     
-    /// Clear is the way out of an armed clock, the same way it backs out of Plus Perfect.
+    /// Clear is the way out of an armed clock, the same way it backs out of Perfect Plus.
     /// An override already committed survives it, so clearing the display cannot undo the
     /// setup the performer just made.
     private func clearAll() {
@@ -128,27 +154,27 @@ struct CalculatorView: View {
     }
 
     private func resetEntry() {
-        CalculatorOperations.clearAll(state: &calc, plusPerfectHandler: plusPerfectHandler)
+        CalculatorOperations.clearAll(state: &calc, perfectPlusHandler: perfectPlusHandler)
         hasEntryToClear = false
     }
     
     private func clearEntry() {
-        CalculatorOperations.clearEntry(state: &calc)
+        CalculatorOperations.clearEntry(state: &calc, perfectPlusMode: perfectPlusHandler.mode)
         hasEntryToClear = false
     }
     
     private func backspace() {
-        CalculatorOperations.backspace(state: &calc, plusPerfectMode: plusPerfectHandler.mode)
-        if !isPlusPerfectArmed { hasEntryToClear = calc.display != "0" }
+        CalculatorOperations.backspace(state: &calc, perfectPlusMode: perfectPlusHandler.mode)
+        if !perfectPlusHoldsTheKeys { hasEntryToClear = calc.display != "0" }
     }
 
-    /// While Plus Perfect is armed the keypad is inert, so a tap entered nothing and the
-    /// clear key has to stay a full reset. Treating it as an entry would spend the
-    /// performer's one way out of the armed state on a press that cleared nothing.
-    private var isPlusPerfectArmed: Bool { plusPerfectHandler.mode == .armed }
+    /// While the phone is turned away the keypad is inert, so a tap entered nothing and the
+    /// clear key has to stay a full reset. Treating it as an entry would leave clear wiping
+    /// an entry that was never made.
+    private var perfectPlusHoldsTheKeys: Bool { perfectPlusHandler.mode.keysAreInert }
     
     private func toggleSign() {
-        CalculatorOperations.toggleSign(state: &calc, plusPerfectMode: plusPerfectHandler.mode)
+        CalculatorOperations.toggleSign(state: &calc, perfectPlusMode: perfectPlusHandler.mode)
     }
     
     /// Shows the hidden mode badge long enough to read.
@@ -184,14 +210,14 @@ struct CalculatorView: View {
     private func performOperation(_ op: CalculatorOperation) {
         // An operator pressed part-way through an entry finishes the sum on the go first,
         // so the display carries the running total into the next operation.
-        if CalculatorOperations.shouldFinishPendingSum(calc, plusPerfectMode: plusPerfectHandler.mode) {
+        if CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
             equals()
         }
         CalculatorOperations.performOperation(
             op,
             state: &calc,
             settings: settings,
-            plusPerfectHandler: plusPerfectHandler
+            perfectPlusHandler: perfectPlusHandler
         )
         // After operation, there's no entry to clear (result is shown)
         hasEntryToClear = false
@@ -203,13 +229,13 @@ struct CalculatorView: View {
         CalculatorOperations.equals(
             state: &calc,
             force: force,
-            plusPerfectHandler: plusPerfectHandler
+            perfectPlusHandler: perfectPlusHandler
         )
         // After equals, there's no entry to clear (result is shown)
         hasEntryToClear = false
     }
     
     private func calculatePerfectAddend() {
-        plusPerfectHandler.calculatePerfectAddend(state: &calc, force: force)
+        perfectPlusHandler.calculatePerfectAddend(state: &calc, force: force)
     }
 }

@@ -74,21 +74,21 @@ final class CalculatorFlowTests: XCTestCase {
     func testOnlyAHalfFinishedEntryCountsAsAPendingSum() {
         XCTAssertTrue(CalculatorOperations.shouldFinishPendingSum(
             state(operation: .add, userIsTyping: true),
-            plusPerfectMode: .inactive
+            perfectPlusMode: .inactive
         ))
         // The keypad is inert while armed, so there is nothing to finish.
         XCTAssertFalse(CalculatorOperations.shouldFinishPendingSum(
             state(operation: .add, userIsTyping: true),
-            plusPerfectMode: .armed
+            perfectPlusMode: .armed
         ))
         XCTAssertFalse(CalculatorOperations.shouldFinishPendingSum(
             state(operation: nil, userIsTyping: true),
-            plusPerfectMode: .inactive
+            perfectPlusMode: .inactive
         ))
         // A result sitting on the display is not a half-finished entry.
         XCTAssertFalse(CalculatorOperations.shouldFinishPendingSum(
             state(operation: .add, userIsTyping: false),
-            plusPerfectMode: .inactive
+            perfectPlusMode: .inactive
         ))
     }
 

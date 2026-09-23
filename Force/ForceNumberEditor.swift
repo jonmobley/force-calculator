@@ -18,7 +18,11 @@ struct ForceNumberEditor: View {
     @FocusState private var isFieldFocused: Bool
 
     /// Longer values overflow the calculator readout, so cap what can be typed.
-    private static let maxDigits = 12
+    ///
+    /// Tied to the readout's own ceiling rather than set independently: at twelve the field
+    /// accepted numbers the calculator could only show as `1.234e11`, so a force saved here
+    /// was one the reveal could not spell out.
+    private static let maxDigits = CalculatorFormatter.maxDisplayDigits
 
     var body: some View {
         NavigationStack {

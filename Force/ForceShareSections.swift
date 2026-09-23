@@ -1,24 +1,39 @@
 import SwiftUI
 import PhotosUI
+import ForceShared
 
-/// Screenshot used when the magician performs on their own phone.
-struct ForcePhonePerformanceSection: View {
+/// Launch choice and screenshot used when the magician performs on their own phone.
+struct ForcePhonePage: View {
+    @EnvironmentObject private var settings: CalculatorSettings
     @Binding var selectedPhotoItem: PhotosPickerItem?
     let backgroundImage: UIImage?
     let onDelete: () -> Void
 
     var body: some View {
-        Section {
-            HStack(alignment: .top, spacing: 12) {
-                Text("Take a screenshot of your phone app screen and add it below to use as a background image when in performance mode on your own phone.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                photoWell
+        Form {
+            Section {
+                Toggle("Open to Calculator", isOn: $settings.openToCalculator)
+                screenshotToggle
+                HStack(alignment: .top, spacing: 12) {
+                    Text("Take a screenshot of your phone app screen and add it below to use as a background image when in performance mode on your own phone.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    photoWell
+                }
+                .padding(.vertical, 8)
             }
-            .padding(.vertical, 8)
-        } header: {
-            Text("Perform on Your Phone")
+        }
+        .navigationTitle("Perform on Your Phone")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var screenshotToggle: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Start with Screenshot", isOn: $settings.startWithScreenshot)
+            Text("App starts showing screenshot, tap anywhere to open calculator")
+                .font(.caption)
+                .foregroundColor(.secondary)
         }
     }
 
@@ -51,30 +66,3 @@ struct ForcePhonePerformanceSection: View {
     }
 }
 
-struct ForceQRCodeButton: View {
-    let tint: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Image(systemName: "qrcode")
-                    .foregroundColor(tint)
-                    .frame(width: 24, height: 24)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("QR Code & NFC")
-                        .font(.headline)
-                    Text("Generate QR code or write to NFC sticker")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.gray)
-                    .font(.caption)
-            }
-            .padding(.vertical, 4)
-        }
-        .buttonStyle(.plain)
-    }
-}

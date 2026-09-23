@@ -1,16 +1,40 @@
 import Foundation
 
-public enum PlusPerfectState {
+public enum PerfectPlusState {
     case inactive
     /// Plus is pending as an ordinary addition. Turning the phone over now arms the trick.
     case pendingAdd
-    /// The phone was turned over while plus was pending; waiting for it to come back upright.
+    /// The phone was turned over while plus was pending; the addend is not on the display yet.
     case armed
+    /// The addend is on the display while the phone is still turned away, so it is already
+    /// there the moment the phone comes back.
+    case staged
     case calculated
+
+    /// Whether the keypad is dead.
+    ///
+    /// It is for as long as the phone is turned away from the performer. The trick is run
+    /// with a hand wrapped round the glass, which is exactly where stray presses land, and
+    /// one landing now would either stand the trick down or wipe the staged addend.
+    public var keysAreInert: Bool {
+        self == .armed || self == .staged
+    }
 }
 
 public enum CalculatorOperation {
     case add, subtract, multiply, divide, percent
+
+    /// The glyph on the key, for the performer's read-out of what the spectator pressed.
+    /// Matches the keypad rather than ASCII, so the transcript reads like the calculator.
+    public var peekSymbol: String {
+        switch self {
+        case .add: return "+"
+        case .subtract: return "−"
+        case .multiply: return "×"
+        case .divide: return "÷"
+        case .percent: return "%"
+        }
+    }
 }
 
 /// Key handling shared by the host calculator and the App Clip.
@@ -18,9 +42,9 @@ public struct CalculatorOperations {
     public static func digitPressed(
         _ digit: String,
         state: inout CalculatorState,
-        plusPerfectMode: PlusPerfectState
+        perfectPlusMode: PerfectPlusState
     ) {
-        if plusPerfectMode == .armed { return }
+        if perfectPlusMode.keysAreInert { return }
         let digitCount = state.display.filter { $0.isNumber }.count
         if state.userIsTyping {
             guard digitCount < 9 else { return }
@@ -33,9 +57,9 @@ public struct CalculatorOperations {
 
     public static func decimalPressed(
         state: inout CalculatorState,
-        plusPerfectMode: PlusPerfectState
+        perfectPlusMode: PerfectPlusState
     ) {
-        if plusPerfectMode == .armed || state.display.contains(".") { return }
+        if perfectPlusMode.keysAreInert || state.display.contains(".") { return }
         if state.userIsTyping {
             state.display += "."
         } else {
@@ -46,9 +70,9 @@ public struct CalculatorOperations {
 
     public static func backspace(
         state: inout CalculatorState,
-        plusPerfectMode: PlusPerfectState
+        perfectPlusMode: PerfectPlusState
     ) {
-        if plusPerfectMode == .armed { return }
+        if perfectPlusMode.keysAreInert { return }
         let cleaned = state.display.replacingOccurrences(of: ",", with: "")
         if cleaned.count > 1 {
             state.display = CalculatorFormatter.formatDisplay(String(cleaned.dropLast()))
@@ -60,9 +84,9 @@ public struct CalculatorOperations {
 
     public static func toggleSign(
         state: inout CalculatorState,
-        plusPerfectMode: PlusPerfectState
+        perfectPlusMode: PerfectPlusState
     ) {
-        if plusPerfectMode == .armed || state.display == "0" { return }
+        if perfectPlusMode.keysAreInert || state.display == "0" { return }
         if state.display.hasPrefix("-") {
             state.display.removeFirst()
         } else {
@@ -72,17 +96,27 @@ public struct CalculatorOperations {
     }
 
     /// Clears the entry on the display, leaving any calculation under way in place.
-    public static func clearEntry(state: inout CalculatorState) {
+    public static func clearEntry(
+        state: inout CalculatorState,
+        perfectPlusMode: PerfectPlusState
+    ) {
+        if perfectPlusMode.keysAreInert { return }
         state.display = "0"
         state.userIsTyping = false
     }
 
     /// Clears the whole session, including the force count and any pending trick.
+    ///
+    /// Inert while the phone is turned away, like the rest of the keys. The trick is run with
+    /// the phone on its face and a hand wrapped round the glass, which is exactly when a stray
+    /// press lands, and clear was the only key still live enough to stand the trick down.
+    /// Nothing is stranded by this: turning the phone back always hands the keys back.
     public static func clearAll(
         state: inout CalculatorState,
-        plusPerfectHandler: PlusPerfectHandler
+        perfectPlusHandler: PerfectPlusHandler
     ) {
+        if perfectPlusHandler.mode.keysAreInert { return }
         state = CalculatorState()
-        plusPerfectHandler.reset()
+        perfectPlusHandler.reset()
     }
 }

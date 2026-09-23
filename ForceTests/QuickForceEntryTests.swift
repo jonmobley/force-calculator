@@ -251,9 +251,9 @@ final class QuickForceEntryFlowTests: XCTestCase {
         XCTAssertEqual(calculator.force, ForceValues(number: 4_556_325, activationCount: 3))
     }
 
-    /// Plus Perfect reaches for the same pair of numbers, so a quick-set force has to move
+    /// Perfect Plus reaches for the same pair of numbers, so a quick-set force has to move
     /// the addend with it.
-    func testPlusPerfectUsesTheOverride() {
+    func testPerfectPlusUsesTheOverride() {
         let calculator = TestCalculator(forceNumber: 4_556_325, activationCount: 3)
 
         calculator.tapClock()

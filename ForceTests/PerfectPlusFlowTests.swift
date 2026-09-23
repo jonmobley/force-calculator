@@ -1,18 +1,18 @@
 import XCTest
 import ForceShared
 
-/// Covers what the keypad does once a Plus Perfect reveal has landed. The tests in
+/// Covers what the keypad does once a Perfect Plus reveal has landed. The tests in
 /// `ForceLogicTests` check the decisions that lead up to the reveal; these press real keys
 /// afterwards, because the state the reveal leaves behind is what the spectator gets to
 /// play with.
-final class PlusPerfectFlowTests: XCTestCase {
+final class PerfectPlusFlowTests: XCTestCase {
     private let forceNumber = 4_556_325
 
     func testRevealLeavesNoPendingAddBehind() {
         let calculator = TestCalculator(forceNumber: forceNumber, activationCount: 3)
         calculator.reachTheForce(savedNumber: 100)
         XCTAssertEqual(calculator.display, formatted(forceNumber))
-        XCTAssertEqual(calculator.plusPerfectMode, .inactive)
+        XCTAssertEqual(calculator.perfectPlusMode, .inactive)
 
         // A spectator tapping equals again must not carry the display off the force.
         calculator.equals()
@@ -40,6 +40,26 @@ final class PlusPerfectFlowTests: XCTestCase {
         calculator.type("5")
         calculator.equals()
         XCTAssertEqual(calculator.display, "10")
+    }
+
+    /// The number is staged while the phone is still turned away, so the keypad has to stay
+    /// dead until it comes back. A hand wrapped round the glass is exactly where stray
+    /// presses land, and one landing now would type over the whole trick.
+    func testStagedNumberSurvivesHandlingUntilThePhoneComesBack() {
+        let calculator = TestCalculator(forceNumber: forceNumber, activationCount: 3)
+        calculator.stageTheNumberBehindTheTurn(savedNumber: 100)
+        let staged = calculator.display
+        XCTAssertEqual(staged, formatted(forceNumber - 100))
+
+        calculator.type("7")
+        calculator.press(.multiply)
+        calculator.clearAll()
+        calculator.equals()
+        XCTAssertEqual(calculator.display, staged)
+
+        calculator.turnPhoneBack()
+        calculator.equals()
+        XCTAssertEqual(calculator.display, formatted(forceNumber))
     }
 
     private func formatted(_ value: Int) -> String {

@@ -18,7 +18,7 @@ struct QRCodeNFCView: View {
     /// Stable invocation URL. Settings travel through `ForceConfigService`, so
     /// this value never changes and a written sticker never goes stale.
     private var appClipURL: String {
-        let url = AppClipQuery.stableURL().absoluteString
+        let url = AppClipQuery.stableURL(performer: PerformerCredentials.identifier).absoluteString
         debugLog("🔗 App Clip URL: \(url)")
         return url
     }
@@ -27,7 +27,11 @@ struct QRCodeNFCView: View {
         ScrollView {
             VStack(spacing: 24) {
                 // QR Code Section
-                QRCodeSection(qrCodeImage: qrCodeImage, downloadAction: downloadQRCode)
+                QRCodeSection(
+                    qrCodeImage: qrCodeImage,
+                    tint: settings.buttonTheme.color,
+                    downloadAction: downloadQRCode
+                )
                 
                 // NFC Section
                 NFCSection(
@@ -111,6 +115,9 @@ struct QRCodeNFCView: View {
 
 struct QRCodeSection: View {
     let qrCodeImage: UIImage?
+    /// The performer's chosen operator colour, so this screen matches the rest of the
+    /// app rather than standing out in the system blue.
+    let tint: Color
     let downloadAction: () -> Void
     
     var body: some View {
@@ -151,7 +158,7 @@ struct QRCodeSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-                .background(Color.blue)
+                .background(tint)
                 .foregroundColor(.white)
                 .cornerRadius(12)
             }
@@ -242,7 +249,7 @@ struct InstructionsSection: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         QRCodeNFCView()
     }
     .environmentObject(CalculatorSettings())

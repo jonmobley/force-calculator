@@ -1,36 +1,46 @@
 import SwiftUI
 import ForceShared
 
-/// Shows the number the spectator is typing into the App Clip, live.
-///
-/// Only present while live peek is enabled. The value updates as the spectator
-/// types, so the performer can read it at a glance without the spectator ever
-/// pressing equals.
-struct ForcePeekSection: View {
+/// Live Peek page: the switch, then the live calculation once it is on.
+struct ForceLivePeekPage: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @ObservedObject var reader: ForcePeekReader
-    @StateObject private var haptics = PeekHaptics()
+    @Binding var showingStage: Bool
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Live Peek", isOn: $settings.livePeekEnabled)
+            } footer: {
+                Text("See the number the spectator types in the App Clip, live, without them pressing equals.")
+            }
+            if settings.livePeekEnabled {
+                ForcePeekSection(reader: reader, showingStage: $showingStage)
+            }
+        }
+        .navigationTitle("Live Peek")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Shows what the spectator is working through in the App Clip, live.
+///
+/// The calculation builds up as they type, so the performer sees `123 +` then `456 =`
+/// then the answer, rather than only whichever number happens to be on screen.
+struct ForcePeekSection: View {
+    @ObservedObject var reader: ForcePeekReader
+    @Binding var showingStage: Bool
 
     /// Performer-only preferences, so they stay local rather than syncing to the clip.
     @AppStorage("livePeekAutoHaptics") private var autoHaptics = false
-    @State private var lastAutoPlayed: String?
-    @State private var showingStage = false
+    @AppStorage("livePeekAutoStage") private var autoStage = false
 
     var body: some View {
-        if settings.livePeekEnabled {
-            Section {
-                content
-                controls
-            } header: {
-                Text("Live Peek")
-            } footer: {
-                Text(footer)
-            }
-            .onDisappear { haptics.cancel() }
-            .onChange(of: reader.state) { _, newState in autoPlay(newState) }
-            .fullScreenCover(isPresented: $showingStage) {
-                PeekStageView(reader: reader)
-            }
+        Section {
+            content
+            controls
+        } footer: {
+            Text(footer)
         }
     }
 
@@ -38,15 +48,14 @@ struct ForcePeekSection: View {
     private var content: some View {
         switch reader.state {
         case .value(let peek):
-            valueRow(peek)
-            tapOutButton(for: peek)
+            transcript(peek)
         case .waiting, .idle:
             statusRow(icon: "ellipsis.circle", tint: .secondary, text: "Waiting for the spectator…")
-        case .missingToken:
+        case .notAuthorized:
             statusRow(
                 icon: "exclamationmark.triangle.fill",
                 tint: .red,
-                text: "Add your write token in Sync to receive peeks."
+                text: "This phone cannot read peeks for that code."
             )
         }
     }
@@ -54,33 +63,49 @@ struct ForcePeekSection: View {
     @ViewBuilder
     private var controls: some View {
         Toggle("Auto-Buzz New Numbers", isOn: $autoHaptics)
+        Toggle("Auto-Open Big", isOn: $autoStage)
         Button {
             showingStage = true
         } label: {
             Label("Show Big", systemImage: "arrow.up.left.and.arrow.down.right")
         }
-    }
-
-    private func valueRow(_ peek: ForcePeekService.Peek) -> some View {
-        HStack {
-            Text(peek.value)
-                .font(.system(size: 34, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-            Spacer()
-            Text(peek.updatedAt.formatted(date: .omitted, time: .standard))
-                .font(.caption)
-                .foregroundColor(.secondary)
+        if case .value = reader.state {
+            Button(role: .destructive) {
+                Task { await reader.clear() }
+            } label: {
+                Label("Clear", systemImage: "trash")
+            }
         }
     }
 
-    private func tapOutButton(for peek: ForcePeekService.Peek) -> some View {
-        Button {
-            haptics.play(peek.value)
-        } label: {
-            Label("Tap Out Digits", systemImage: "hand.tap.fill")
+    /// The calculation so far, oldest at the top so it reads in the order it was typed.
+    /// The last line is what is on the spectator's screen right now, so it is the one
+    /// given full size; the steps above it are context and stay quieter.
+    private func transcript(_ peek: ForcePeekService.Peek) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(peek.entries) { entry in
+                let isLatest = entry.id == peek.latest?.id
+                HStack(alignment: .firstTextBaseline) {
+                    Text(entry.line)
+                        .font(.system(
+                            size: isLatest ? 34 : 19,
+                            weight: isLatest ? .semibold : .regular,
+                            design: .rounded
+                        ))
+                        .monospacedDigit()
+                        .foregroundStyle(isLatest ? Color.primary : Color.secondary)
+                        .minimumScaleFactor(0.5)
+                        .lineLimit(1)
+                    Spacer()
+                    if isLatest {
+                        Text(entry.at.formatted(date: .omitted, time: .standard))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
         }
+        .padding(.vertical, 2)
     }
 
     private func statusRow(icon: String, tint: Color, text: String) -> some View {
@@ -93,17 +118,8 @@ struct ForcePeekSection: View {
     }
 
     private var footer: String {
-        "The spectator's number appears here as they type it, no equals needed. "
-            + "Tap Out Digits buzzes it in your hand; Auto-Buzz does it for each new "
-            + "number; Show Big fills the screen so you can read it from across a room."
-    }
-
-    /// Buzzes a value the first time it settles, so a value the spectator leaves
-    /// sitting is felt once rather than on every poll.
-    private func autoPlay(_ state: ForcePeekReader.State) {
-        guard autoHaptics, case .value(let peek) = state else { return }
-        guard peek.value != lastAutoPlayed else { return }
-        lastAutoPlayed = peek.value
-        haptics.play(peek.value)
+        "The spectator's calculation appears here as they type it, no equals needed. "
+            + "Show Big fills the screen — turn the phone sideways for the largest digits, "
+            + "readable across a room. Clear wipes it before the next spectator."
     }
 }

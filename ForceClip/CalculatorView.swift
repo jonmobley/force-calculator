@@ -3,6 +3,8 @@ import ForceShared
 
 struct CalculatorView: View {
     @EnvironmentObject var settings: CalculatorSettings
+    @EnvironmentObject var session: ClipSession
+    @Environment(\.scenePhase) private var scenePhase
 
     /// The whole calculator session, held as one value so the shared key handling takes a
     /// single binding.
@@ -12,7 +14,7 @@ struct CalculatorView: View {
     @State private var showModeText = false
     @State private var modeHideWorkItem: DispatchWorkItem?
 
-    @StateObject private var plusPerfectHandler = PlusPerfectHandler()
+    @StateObject private var perfectPlusHandler = PerfectPlusHandler()
     @StateObject private var quickForce = QuickForceEntry()
     @StateObject private var peek = PeekReporter()
 
@@ -50,19 +52,57 @@ struct CalculatorView: View {
             }
         }
         .background(Color.black.ignoresSafeArea())
+        .simultaneousGesture(screenTouch)
         .onAppear(perform: startSession)
+        // The performer's live settings land after the calculator is already up, so the
+        // vibration has to be able to change its mind once they arrive.
+        .onChange(of: settings.perfectPlusHapticsEnabled) { _, enabled in
+            perfectPlusHandler.hapticsEnabled = enabled
+        }
+        // The invocation URL can arrive after the calculator is already up, so the
+        // reporter has to learn whose record to write to once it does.
+        .onChange(of: session.performerID) { _, id in
+            peek.performerID = id
+        }
+        // Gravity is sampled ten times a second, which is worth nothing once the calculator
+        // is off screen and costs the spectator battery. Only the sampling stops; a pending
+        // or armed trick keeps its state and picks up again on the way back.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                startMonitoringTheTurn()
+            } else {
+                perfectPlusHandler.stopMonitoring()
+            }
+        }
         .onDisappear(perform: stopSession)
+    }
+
+    /// Every touch on the calculator, keys included, reported so an armed Perfect Plus can
+    /// hold the number back until the phone has been left alone. Recognised alongside the
+    /// keys rather than instead of them, so the keypad still works normally.
+    private var screenTouch: some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in perfectPlusHandler.noteScreenTouch() }
     }
 
     private func startSession() {
         calc.forceCount = 0
-        plusPerfectHandler.startMonitoring { calculatePerfectAddend() }
+        peek.performerID = session.performerID
+        startMonitoringTheTurn()
+    }
+
+    private func startMonitoringTheTurn() {
+        perfectPlusHandler.startMonitoring(
+            hapticsEnabled: settings.perfectPlusHapticsEnabled
+        ) {
+            calculatePerfectAddend()
+        }
     }
 
     private func stopSession() {
         peek.flush(calc.display, enabled: settings.livePeekEnabled, suppressed: peekSuppressed)
         peek.stop()
-        plusPerfectHandler.stopMonitoring()
+        perfectPlusHandler.stopMonitoring()
         modeHideWorkItem?.cancel()
         // The override is good for one sitting only, so closing the calculator
         // hands the trick back to the performer's published settings.
@@ -71,10 +111,10 @@ struct CalculatorView: View {
 
     /// Live peek must report the spectator's number, never the performer's own
     /// setup. The covert clock sequence types the force number straight onto the
-    /// display, and an armed Plus Perfect leaves a staged value there, so peek
-    /// stays quiet through both.
+    /// display, and Perfect Plus leaves a staged value there while the phone is
+    /// turned away, so peek stays quiet through both.
     private var peekSuppressed: Bool {
-        quickForce.isArmed || plusPerfectHandler.mode == .armed
+        quickForce.isArmed || perfectPlusHandler.mode.keysAreInert
     }
 
     private func reportPeek() {
@@ -123,35 +163,38 @@ struct CalculatorView: View {
         CalculatorOperations.digitPressed(
             digit,
             state: &calc,
-            plusPerfectMode: plusPerfectHandler.mode
+            perfectPlusMode: perfectPlusHandler.mode
         )
         reportPeek()
     }
 
     private func decimalPressed() {
-        CalculatorOperations.decimalPressed(state: &calc, plusPerfectMode: plusPerfectHandler.mode)
+        CalculatorOperations.decimalPressed(state: &calc, perfectPlusMode: perfectPlusHandler.mode)
         reportPeek()
     }
 
     private func backspace() {
-        CalculatorOperations.backspace(state: &calc, plusPerfectMode: plusPerfectHandler.mode)
+        CalculatorOperations.backspace(state: &calc, perfectPlusMode: perfectPlusHandler.mode)
         reportPeek()
     }
 
-    /// Clear is the way out of an armed clock, the same way it backs out of Plus Perfect.
+    /// Clear is the way out of an armed clock, the same way it backs out of Perfect Plus.
     /// An override already committed survives it, so a spectator clearing the display
     /// cannot undo the setup.
     private func clearAll() {
         quickForce.cancel()
         resetEntry()
+        // Nothing was finished, but the number is gone, so whatever comes next belongs
+        // beside it rather than on top of it.
+        peek.beginNewEntry()
     }
 
     private func resetEntry() {
-        CalculatorOperations.clearAll(state: &calc, plusPerfectHandler: plusPerfectHandler)
+        CalculatorOperations.clearAll(state: &calc, perfectPlusHandler: perfectPlusHandler)
     }
 
     private func toggleSign() {
-        CalculatorOperations.toggleSign(state: &calc, plusPerfectMode: plusPerfectHandler.mode)
+        CalculatorOperations.toggleSign(state: &calc, perfectPlusMode: perfectPlusHandler.mode)
         reportPeek()
     }
 
@@ -163,31 +206,55 @@ struct CalculatorView: View {
     }
 
     private func performOperation(_ op: CalculatorOperation) {
+        // Read before anything moves: finishing a pending sum replaces the display with
+        // the running total, and the performer wants the number the spectator typed.
+        let typed = calc.display
         // An operator pressed part-way through an entry finishes the sum on the go first,
         // so the display carries the running total into the next operation.
-        if CalculatorOperations.shouldFinishPendingSum(calc, plusPerfectMode: plusPerfectHandler.mode) {
-            equals()
+        if CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
+            evaluate()
         }
         CalculatorOperations.performOperation(
             op,
             state: &calc,
             settings: settings,
-            plusPerfectHandler: plusPerfectHandler
+            perfectPlusHandler: perfectPlusHandler
         )
+        closePeek(typed, with: op.peekSymbol)
     }
 
     private func equals() {
         // Mid-sequence, equals commits the typed force number instead of calculating.
         if quickForce.consumeEquals(display: calc.display) { return }
-        CalculatorOperations.equals(
-            state: &calc,
-            force: force,
-            plusPerfectHandler: plusPerfectHandler
-        )
+        let typed = calc.display
+        evaluate()
+        // The number the spectator pressed equals on, then the answer they were shown,
+        // which is a new entry of its own.
+        closePeek(typed, with: "=")
         reportPeek()
     }
 
+    /// The calculation itself, with no reporting. The callers decide what the performer
+    /// is told, because an operator that quietly finishes a pending sum should not put
+    /// the running total on the performer's screen as if the spectator had typed it.
+    private func evaluate() {
+        CalculatorOperations.equals(
+            state: &calc,
+            force: force,
+            perfectPlusHandler: perfectPlusHandler
+        )
+    }
+
+    private func closePeek(_ value: String, with op: String) {
+        peek.close(
+            value,
+            with: op,
+            enabled: settings.livePeekEnabled,
+            suppressed: peekSuppressed
+        )
+    }
+
     private func calculatePerfectAddend() {
-        plusPerfectHandler.calculatePerfectAddend(state: &calc, force: force)
+        perfectPlusHandler.calculatePerfectAddend(state: &calc, force: force)
     }
 }

@@ -12,18 +12,47 @@
  * the clip writes the peek without a token (it can never hold one), and only the
  * performer, who holds the write token, may read it back.
  *
- *   GET  /v1/config?id=default   -> current settings, readable by the App Clip
- *   PUT  /v1/config?id=default   -> replace settings, requires the write token
- *   PUT  /v1/peek?id=default     -> report the spectator's number, no token
- *   GET  /v1/peek?id=default     -> latest reported number, requires the token
- *   GET  /health                 -> liveness probe
+ *   GET    /v1/config?id=<performer>  -> current settings, readable by the App Clip
+ *   PUT    /v1/config?id=<performer>  -> replace settings, requires that id's token
+ *   PUT    /v1/peek?id=<performer>    -> report one number the spectator typed, no token
+ *   GET    /v1/peek?id=<performer>    -> the calculation so far, requires that id's token
+ *   DELETE /v1/peek?id=<performer>    -> clear it between spectators, requires the token
+ *   GET    /health                    -> liveness probe
+ *
+ * Peek keeps the whole calculation rather than only the last number. Each settled value
+ * is its own entry, and the operator that ended it is attached to that same entry when
+ * the key is pressed, so the performer reads `123 +` then `456 =` then `579` instead of
+ * a bare `579` with no idea what produced it.
+ *
+ * Each install generates its own id and write token. The first write to an id stores a
+ * hash of its token, and nothing else may write or read peeks for that id afterwards.
+ * Before this, every install shared the id `default` behind one service-wide token, so
+ * performers overwrote each other's force numbers and could read each other's peeks.
  */
 
 /** Largest accepted settings document. The real payload is a few hundred bytes. */
 const MAX_PAYLOAD_BYTES = 8 * 1024;
 
-/** A display value is at most nine digits plus grouping, sign, and a decimal. */
+/** A display value is at most ten digits plus grouping, sign, and a decimal. */
 const MAX_PEEK_VALUE_LENGTH = 64;
+
+/** Entry ids are minted by the clip and used as primary keys, so keep them boring. */
+const ENTRY_ID_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
+
+/** The only keys that can close an entry. Anything else is not from our calculator. */
+const OPERATORS = new Set(["+", "−", "×", "÷", "%", "="]);
+
+/**
+ * How much of a calculation the performer can see at once. Comfortably more than any
+ * spectator will type in one sitting, and small enough to read on a phone.
+ */
+const MAX_ENTRIES = 40;
+
+/**
+ * How long an entry stays readable. Long enough to cover a spectator taking their time,
+ * short enough that the last person's numbers are gone before the next one starts.
+ */
+const ENTRY_TTL_MS = 10 * 60 * 1000;
 
 const DEFAULT_ID = "default";
 
@@ -62,6 +91,8 @@ export default {
           return readPeek(request, env, id);
         case "PUT":
           return writePeek(request, env, id);
+        case "DELETE":
+          return clearPeek(request, env, id);
         default:
           return problem(405, "Method not allowed");
       }
@@ -106,7 +137,12 @@ async function writeConfig(
   env: Env,
   id: string,
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  const presented = bearerToken(request);
+  if (presented === null) {
+    return problem(401, "Unauthorized");
+  }
+  const claim = await authorize(env, id, presented);
+  if (claim === "denied") {
     return problem(401, "Unauthorized");
   }
 
@@ -123,11 +159,19 @@ async function writeConfig(
     return problem(400, "Body must be JSON");
   }
 
+  // The first write to an id binds it to the token that made it. Later writes keep
+  // whatever hash is already stored, so a legacy row on the service-wide token is not
+  // silently converted and locked away from the install that owns it.
+  const tokenHash = claim === "claim" ? await sha256Hex(presented) : null;
+
   await env.DB.prepare(
-    `INSERT INTO config (id, payload, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+    `INSERT INTO config (id, payload, updated_at, token_hash) VALUES (?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET
+       payload = excluded.payload,
+       updated_at = excluded.updated_at,
+       token_hash = COALESCE(config.token_hash, excluded.token_hash)`,
   )
-    .bind(id, body, Date.now())
+    .bind(id, body, Date.now(), tokenHash)
     .run();
 
   return new Response(null, { status: 204, headers: corsHeaders() });
@@ -136,37 +180,71 @@ async function writeConfig(
 // MARK: - Peek
 
 /**
- * Returns the latest number the spectator typed. Guarded by the write token so
- * only the performer can read it: the value is short-lived and low-value, but it
- * is still the spectator's input and should not be readable by a guessed id.
+ * Returns the calculation the spectator has worked through, oldest first. Guarded by the
+ * write token so only the performer can read it: the values are short-lived and
+ * low-value, but they are still the spectator's input and should not be readable by a
+ * guessed id.
  */
 async function readPeek(
   request: Request,
   env: Env,
   id: string,
 ): Promise<Response> {
-  if (!isAuthorized(request, env)) {
+  const presented = bearerToken(request);
+  // Stricter than a write: a read has to match a record that already exists, so an
+  // unclaimed id cannot be used to fish for whatever a spectator happens to be typing.
+  if (presented === null || (await authorize(env, id, presented)) !== "matched") {
     return problem(401, "Unauthorized");
   }
 
-  const row = await env.DB.prepare(
-    "SELECT value, updated_at FROM peek WHERE id = ?",
+  const cutoff = Date.now() - ENTRY_TTL_MS;
+  const { results } = await env.DB.prepare(
+    `SELECT value, op, created_at FROM peek_entry
+     WHERE id = ? AND created_at >= ?
+     ORDER BY created_at ASC
+     LIMIT ?`,
   )
-    .bind(id)
-    .first<{ value: string; updated_at: number }>();
+    .bind(id, cutoff, MAX_ENTRIES)
+    .all<{ value: string; op: string | null; created_at: number }>();
 
-  if (!row) {
+  if (!results || results.length === 0) {
     return problem(404, "No peek reported yet");
   }
 
-  return json({ value: row.value, updatedAt: row.updated_at });
+  return json({
+    entries: results.map((row) => ({
+      value: row.value,
+      op: row.op ?? undefined,
+      at: row.created_at,
+    })),
+  });
+}
+
+/** Wipes the calculation so the next spectator starts on a clean readout. */
+async function clearPeek(
+  request: Request,
+  env: Env,
+  id: string,
+): Promise<Response> {
+  const presented = bearerToken(request);
+  if (presented === null || (await authorize(env, id, presented)) !== "matched") {
+    return problem(401, "Unauthorized");
+  }
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM peek_entry WHERE id = ?").bind(id),
+    env.DB.prepare("DELETE FROM peek WHERE id = ?").bind(id),
+  ]);
+  return new Response(null, { status: 204, headers: corsHeaders() });
 }
 
 /**
- * Records the spectator's current number. Left unauthenticated on purpose: the
- * clip that sends it can never hold the write token. Only a single short value is
- * stored per performer, and each write overwrites the last, so nothing meaningful
- * accumulates even if the endpoint is hit directly.
+ * Records one number from the spectator's calculation. Left unauthenticated on purpose:
+ * the clip that sends it can never hold the write token.
+ *
+ * The same `entryID` may be sent twice, first as a bare number and again once the key
+ * that ended it is known, which is how `123` becomes `123 +` in place rather than
+ * appearing as two separate numbers. A body with no `entryID` is an older clip, and is
+ * stored as a single rolling entry so it still reads something.
  */
 async function writePeek(
   request: Request,
@@ -178,44 +256,111 @@ async function writePeek(
     return problem(413, "Peek too large");
   }
 
-  let value: unknown;
+  let parsed: { value?: unknown; entryID?: unknown; op?: unknown };
   try {
-    value = (JSON.parse(body) as { value?: unknown }).value;
+    parsed = JSON.parse(body) as typeof parsed;
   } catch {
     return problem(400, "Body must be JSON");
   }
 
+  const { value, entryID, op } = parsed;
   if (typeof value !== "string" || value.length === 0 || value.length > MAX_PEEK_VALUE_LENGTH) {
     return problem(400, "Invalid peek value");
   }
+  if (op !== undefined && (typeof op !== "string" || !OPERATORS.has(op))) {
+    return problem(400, "Invalid operator");
+  }
+  const entry = typeof entryID === "string" ? entryID : "legacy";
+  if (!ENTRY_ID_PATTERN.test(entry)) {
+    return problem(400, "Invalid entry id");
+  }
 
-  await env.DB.prepare(
-    `INSERT INTO peek (id, value, updated_at) VALUES (?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-  )
-    .bind(id, value, Date.now())
-    .run();
+  const now = Date.now();
+  await env.DB.batch([
+    // `created_at` is held at its original value on conflict so attaching the operator
+    // does not shuffle a finished number to the end of the calculation.
+    env.DB.prepare(
+      `INSERT INTO peek_entry (id, entry_id, value, op, created_at) VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(id, entry_id) DO UPDATE SET value = excluded.value, op = excluded.op`,
+    ).bind(id, entry, value, op ?? null, now),
+    // Pruned on the way past, so nothing has to sweep and the previous spectator's
+    // numbers cannot survive into somebody else's performance.
+    env.DB.prepare("DELETE FROM peek_entry WHERE id = ? AND created_at < ?").bind(
+      id,
+      now - ENTRY_TTL_MS,
+    ),
+    // Kept in step for any clip still reading the single-value shape.
+    env.DB.prepare(
+      `INSERT INTO peek (id, value, updated_at) VALUES (?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    ).bind(id, value, now),
+  ]);
 
   return new Response(null, { status: 204, headers: corsHeaders() });
 }
-function isAuthorized(request: Request, env: Env): boolean {
+/** The bearer token on the request, or null when there is not one. */
+function bearerToken(request: Request): string | null {
   const header = request.headers.get("authorization") ?? "";
   const prefix = "Bearer ";
   if (!header.startsWith(prefix)) {
+    return null;
+  }
+  const token = header.slice(prefix.length);
+  return token.length > 0 ? token : null;
+}
+
+type Claim = "matched" | "claim" | "denied";
+
+/**
+ * Decides whether a token may act on an id.
+ *
+ * - `matched`: the id is already bound to this token.
+ * - `claim`: the id is unused, so this token may take it.
+ * - `denied`: the id belongs to someone else.
+ *
+ * Rows written before per-performer credentials existed carry no hash. Those stay on
+ * the service-wide token, so the install that has been publishing to `default` all
+ * along keeps its record instead of being locked out by its own upgrade.
+ */
+async function authorize(env: Env, id: string, presented: string): Promise<Claim> {
+  const row = await env.DB.prepare("SELECT token_hash FROM config WHERE id = ?")
+    .bind(id)
+    .first<{ token_hash: string | null }>();
+
+  if (!row) {
+    return "claim";
+  }
+  if (row.token_hash) {
+    return constantTimeEqual(await sha256Hex(presented), row.token_hash)
+      ? "matched"
+      : "denied";
+  }
+  const legacy = env.WRITE_TOKEN ?? "";
+  return legacy.length > 0 && constantTimeEqual(presented, legacy)
+    ? "matched"
+    : "denied";
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  const left = new TextEncoder().encode(a);
+  const right = new TextEncoder().encode(b);
+  if (left.byteLength !== right.byteLength) {
     return false;
   }
-  const presented = new TextEncoder().encode(header.slice(prefix.length));
-  const expected = new TextEncoder().encode(env.WRITE_TOKEN ?? "");
-  if (presented.byteLength !== expected.byteLength) {
-    return false;
-  }
-  return crypto.subtle.timingSafeEqual(presented, expected);
+  return crypto.subtle.timingSafeEqual(left, right);
 }
 
 function corsHeaders(): Record<string, string> {
   return {
     "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, PUT, OPTIONS",
+    "access-control-allow-methods": "GET, PUT, DELETE, OPTIONS",
     "access-control-allow-headers": "authorization, content-type",
   };
 }

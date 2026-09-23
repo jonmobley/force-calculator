@@ -3,7 +3,7 @@ import Foundation
 /// What the next equals press should land on, and how many presses it takes.
 ///
 /// Resolved once per press and handed to everything that needs an answer, so the
-/// activation counter, the Plus Perfect addend and the equals-key peek cannot
+/// activation counter, the Perfect Plus addend and the equals-key peek cannot
 /// disagree about which number is in play.
 public struct ForceValues: Equatable {
     /// The number equals will land on.

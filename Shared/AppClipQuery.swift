@@ -12,7 +12,8 @@ public struct AppClipQuery: Equatable {
     public var magicTrickMode: MagicTrickMode
     public var dateTimeFormat: DateTimeFormat
     public var buttonTheme: ButtonTheme
-    public var plusPerfectEnabled: Bool
+    public var perfectPlusEnabled: Bool
+    public var perfectPlusHapticsEnabled: Bool
     public var startWithScreenshot: Bool
     public var livePeekEnabled: Bool
 
@@ -22,7 +23,8 @@ public struct AppClipQuery: Equatable {
         magicTrickMode = settings.magicTrickMode
         dateTimeFormat = settings.dateTimeFormat
         buttonTheme = settings.buttonTheme
-        plusPerfectEnabled = settings.plusPerfectEnabled
+        perfectPlusEnabled = settings.perfectPlusEnabled
+        perfectPlusHapticsEnabled = settings.perfectPlusHapticsEnabled
         startWithScreenshot = settings.startWithScreenshot
         livePeekEnabled = settings.livePeekEnabled
     }
@@ -36,16 +38,17 @@ public struct AppClipQuery: Equatable {
     /// The clip reads the live settings from `ForceConfigService` instead. As a
     /// side benefit the force number is no longer written onto the tag in plain
     /// text where any tag reader could see it.
-    public static func stableURL() -> URL {
+    public static func stableURL(performer: String) -> URL {
         var components = URLComponents(url: invocation, resolvingAgainstBaseURL: false)!
         components.queryItems = [
             URLQueryItem(name: "p", value: clipBundleIdentifier),
-            URLQueryItem(name: "id", value: ForceConfigService.performerID)
+            URLQueryItem(name: "id", value: performer)
         ]
         return components.url!
     }
 
-    /// Builds `https://appclip.apple.com/id` with `p`, `fn`, `ac`, `mt`, `dt`, `bt`, `pp`, `sws`, and `pk`.
+    /// Builds `https://appclip.apple.com/id` with `p`, `fn`, `ac`, `mt`, `dt`, `bt`, `pp`,
+    /// `pph`, `sws`, and `pk`.
     ///
     /// Retained so stickers written before the config service existed keep
     /// working: the clip still reads these parameters, then overrides them with
@@ -59,7 +62,8 @@ public struct AppClipQuery: Equatable {
             URLQueryItem(name: "mt", value: magicTrickMode.rawValue),
             URLQueryItem(name: "dt", value: dateTimeFormat.rawValue),
             URLQueryItem(name: "bt", value: buttonTheme.rawValue),
-            URLQueryItem(name: "pp", value: String(plusPerfectEnabled)),
+            URLQueryItem(name: "pp", value: String(perfectPlusEnabled)),
+            URLQueryItem(name: "pph", value: String(perfectPlusHapticsEnabled)),
             URLQueryItem(name: "sws", value: String(startWithScreenshot)),
             URLQueryItem(name: "pk", value: String(livePeekEnabled))
         ]
@@ -69,6 +73,19 @@ public struct AppClipQuery: Equatable {
     /// Reads the `p` query item.
     public static func bundleIdentifier(in url: URL) -> String? {
         queryItems(in: url)?.first { $0.name == "p" }?.value
+    }
+
+    /// Whose settings this invocation is for.
+    ///
+    /// Tags written before performers had their own ids carry no `id`, so those fall back
+    /// to the shared record they were pointing at all along and keep working.
+    public static func performerID(in url: URL) -> String {
+        guard let items = queryItems(in: url),
+              let id = value("id", in: items),
+              PerformerID.isValid(id) else {
+            return PerformerID.shared
+        }
+        return id
     }
 
     /// Copies query items that are present onto `settings` for this clip session.
@@ -125,7 +142,10 @@ public struct AppClipQuery: Equatable {
 
     private static func applyFlags(_ items: [URLQueryItem], to settings: CalculatorSettings) {
         if let raw = value("pp", in: items), let enabled = Bool(raw) {
-            settings.plusPerfectEnabled = enabled
+            settings.perfectPlusEnabled = enabled
+        }
+        if let raw = value("pph", in: items), let enabled = Bool(raw) {
+            settings.perfectPlusHapticsEnabled = enabled
         }
         if let raw = value("sws", in: items), let enabled = Bool(raw) {
             settings.startWithScreenshot = enabled
