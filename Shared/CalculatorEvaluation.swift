@@ -10,7 +10,9 @@ extension CalculatorOperations {
         _ state: CalculatorState,
         perfectPlusMode: PerfectPlusState
     ) -> Bool {
-        !perfectPlusMode.keysAreInert && state.operation != nil && state.userIsTyping
+        !perfectPlusMode.keysAreInert
+            && state.operation != nil
+            && (state.userIsTyping || state.percentReady)
     }
 
     public static func performOperation(
@@ -22,13 +24,15 @@ extension CalculatorOperations {
         // The keypad is inert while the phone is turned away, so a stray tap cannot disturb
         // the trick. Turning the phone back is the way out.
         guard !perfectPlusHandler.mode.keysAreInert else { return }
+        if op == .percent {
+            applyPercent(&state)
+            perfectPlusHandler.reset()
+            return
+        }
+        state.percentReady = false
         state.previousNumber = CalculatorFormatter.parseDisplay(state.display)
         state.operation = op
         state.userIsTyping = false
-        if op == .percent {
-            state.display = CalculatorFormatter.formatResult(state.previousNumber / 100)
-            state.operation = nil
-        }
         updatePerfectPlus(
             op,
             operand: state.previousNumber,
@@ -40,6 +44,7 @@ extension CalculatorOperations {
     public static func equals(
         state: inout CalculatorState,
         force: ForceValues,
+        countActivation: Bool = true,
         perfectPlusHandler: PerfectPlusHandler
     ) {
         guard !perfectPlusHandler.mode.keysAreInert else { return }
@@ -49,6 +54,7 @@ extension CalculatorOperations {
         }
         // The addition is finishing, so a turn of the phone afterwards must not arm anything.
         perfectPlusHandler.reset()
+        state.percentReady = false
         guard let currentOp = state.operation ?? state.lastOperation else { return }
         if currentOp == .percent { return }
         assignOperands(&state)
@@ -60,19 +66,56 @@ extension CalculatorOperations {
             state.display = "Error"
             return
         }
-        commitResult(calculated, state: &state, force: force)
+        commitResult(
+            calculated,
+            state: &state,
+            force: force,
+            countActivation: countActivation
+        )
     }
 
     private static func commitResult(
         _ calculated: Double,
         state: inout CalculatorState,
-        force: ForceValues
+        force: ForceValues,
+        countActivation: Bool
     ) {
-        let result = applyForce(calculated: calculated, state: &state, force: force)
+        let result = countActivation
+            ? applyForce(calculated: calculated, state: &state, force: force)
+            : calculated
         state.display = CalculatorFormatter.formatResult(result)
         state.previousNumber = result
         storeRepeat(&state)
-        if state.forceCount == 0 { state.operation = nil }
+        // Cleared so the next bare equals repeats the last operand instead of
+        // using the result as both sides. The repeat itself lives in lastOperation.
+        state.operation = nil
+        state.percentReady = false
+        state.userIsTyping = false
+    }
+
+    /// Percent of a pending sum, matching a four-function calculator.
+    ///
+    /// With add or subtract, the typed number is a percent of the left side
+    /// (`200 + 10 %` stages 20). With multiply or divide, it is the typed number
+    /// over 100 (`200 × 50 %` stages 0.5). Alone, the display itself is divided
+    /// by 100. The pending operation stays so equals can finish it.
+    private static func applyPercent(_ state: inout CalculatorState) {
+        let typed = CalculatorFormatter.parseDisplay(state.display)
+        let staged: Double
+        switch state.operation {
+        case .add, .subtract:
+            staged = state.previousNumber * typed / 100
+            state.percentReady = true
+        case .multiply, .divide:
+            staged = typed / 100
+            state.percentReady = true
+        case nil, .percent:
+            staged = typed / 100
+            state.operation = nil
+            state.percentReady = false
+            state.previousNumber = staged
+        }
+        state.display = CalculatorFormatter.formatResult(staged)
         state.userIsTyping = false
     }
 

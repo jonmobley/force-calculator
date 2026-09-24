@@ -55,7 +55,8 @@ final class TestCalculator {
     }
 
     func press(_ op: CalculatorOperation) {
-        if CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
+        if op != .percent,
+           CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
             equals()
         }
         CalculatorOperations.performOperation(
@@ -71,6 +72,7 @@ final class TestCalculator {
         CalculatorOperations.equals(
             state: &calc,
             force: force,
+            countActivation: quickForce.countsActivation(settings: settings),
             perfectPlusHandler: perfectPlusHandler
         )
     }

@@ -21,6 +21,10 @@ public struct CalculatorState {
     /// True while the display holds digits being typed rather than a result.
     public var userIsTyping = false
 
+    /// True after percent has filled the second operand. The next digit replaces it;
+    /// the next operator or equals finishes the sum it belongs to.
+    public var percentReady = false
+
     /// Equals presses so far, counting toward the activation count.
     public var forceCount = 0
 

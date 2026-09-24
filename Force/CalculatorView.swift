@@ -55,6 +55,7 @@ struct CalculatorView: View {
                 CalculatorButtonGrid(
                     settings: settings,
                     showForceNumber: $showForceNumber,
+                    selectedOperation: calc.userIsTyping ? nil : calc.operation,
                     digitAction: digitPressed,
                     decimalAction: decimalPressed,
                     backspaceAction: backspace,
@@ -210,7 +211,8 @@ struct CalculatorView: View {
     private func performOperation(_ op: CalculatorOperation) {
         // An operator pressed part-way through an entry finishes the sum on the go first,
         // so the display carries the running total into the next operation.
-        if CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
+        if op != .percent,
+           CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
             equals()
         }
         CalculatorOperations.performOperation(
@@ -229,6 +231,7 @@ struct CalculatorView: View {
         CalculatorOperations.equals(
             state: &calc,
             force: force,
+            countActivation: quickForce.countsActivation(settings: settings),
             perfectPlusHandler: perfectPlusHandler
         )
         // After equals, there's no entry to clear (result is shown)

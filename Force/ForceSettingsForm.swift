@@ -1,8 +1,11 @@
 import SwiftUI
 import ForceShared
 
-/// Trick mode, the forced value, and how many equals presses reveal it.
-struct ForceTrickPage: View {
+/// Trick mode, the forced value, and the reveal: Perfect Plus or an equals-press count.
+///
+/// The two reveals are alternatives, so this section lives on the performer home
+/// rather than behind its own page.
+struct ForceTrickSection: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @Binding var forceNumberText: String
     @State private var isEditingForceNumber = false
@@ -10,15 +13,13 @@ struct ForceTrickPage: View {
     private var themeColor: Color { settings.buttonTheme.color }
 
     var body: some View {
-        Form {
-            Section {
-                modePicker
-                trickValue
-                activationPicker
-            }
+        Section {
+            modePicker
+            trickValue
+            perfectPlusToggle
+            perfectPlusHapticsToggle
+            activationPicker
         }
-        .navigationTitle("Force")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var modePicker: some View {
@@ -95,32 +96,20 @@ struct ForceTrickPage: View {
             }
             .pickerStyle(.menu)
             .tint(themeColor)
-            Text(ForceActivationCopy.ordinalText(for: settings.activationCount))
+            Text(activationCaption)
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
+        .disabled(settings.perfectPlusEnabled)
     }
 
-    private func updateForceNumber(_ newValue: String) {
-        guard let number = Int(newValue.filter(\.isNumber)) else { return }
-        forceNumberText = String(number)
-        settings.forceNumber = number
-    }
-}
-
-/// Perfect Plus and the buzz that goes with it.
-struct ForcePerfectPlusPage: View {
-    @EnvironmentObject private var settings: CalculatorSettings
-
-    var body: some View {
-        Form {
-            Section {
-                perfectPlusToggle
-                perfectPlusHapticsToggle
-            }
+    /// The count is the reveal only while Perfect Plus is off. The stored count stays,
+    /// so turning Perfect Plus off puts the same number of presses back.
+    private var activationCaption: String {
+        if settings.perfectPlusEnabled {
+            return "Perfect Plus reveals the number instead"
         }
-        .navigationTitle("Perfect Plus")
-        .navigationBarTitleDisplayMode(.inline)
+        return ForceActivationCopy.ordinalText(for: settings.activationCount)
     }
 
     private var perfectPlusToggle: some View {
@@ -146,6 +135,12 @@ struct ForcePerfectPlusPage: View {
                     .foregroundColor(.secondary)
             }
         }
+    }
+
+    private func updateForceNumber(_ newValue: String) {
+        guard let number = Int(newValue.filter(\.isNumber)) else { return }
+        forceNumberText = String(number)
+        settings.forceNumber = number
     }
 }
 

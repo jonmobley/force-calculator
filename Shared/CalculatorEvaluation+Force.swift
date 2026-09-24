@@ -45,7 +45,12 @@ extension CalculatorOperations {
             forceValue: Double(force.number)
         )
         state.forceCount = step.forceCount
-        if step.didForce { state.operation = nil }
+        if step.didForce {
+            // The number has to stay put if the spectator presses equals again.
+            // Leaving the last operation in place would add to the force.
+            state.operation = nil
+            state.lastOperation = nil
+        }
         return step.result
     }
 

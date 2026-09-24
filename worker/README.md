@@ -25,7 +25,7 @@ once stays correct forever.
 
 Every route takes `?id=<performer>`, naming whose record to act on.
 
-Deployed at `https://force-config.jonmobley.workers.dev`.
+Deployed at `https://force-config.jonmobley.workers.dev` and `https://forcemagic.app`.
 
 ## One record per performer
 

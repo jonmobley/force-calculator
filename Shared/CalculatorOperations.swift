@@ -45,6 +45,10 @@ public struct CalculatorOperations {
         perfectPlusMode: PerfectPlusState
     ) {
         if perfectPlusMode.keysAreInert { return }
+        if state.percentReady {
+            state.percentReady = false
+            state.userIsTyping = false
+        }
         let digitCount = state.display.filter { $0.isNumber }.count
         if state.userIsTyping {
             guard digitCount < 9 else { return }
@@ -60,6 +64,10 @@ public struct CalculatorOperations {
         perfectPlusMode: PerfectPlusState
     ) {
         if perfectPlusMode.keysAreInert || state.display.contains(".") { return }
+        if state.percentReady {
+            state.percentReady = false
+            state.userIsTyping = false
+        }
         if state.userIsTyping {
             state.display += "."
         } else {
@@ -73,6 +81,10 @@ public struct CalculatorOperations {
         perfectPlusMode: PerfectPlusState
     ) {
         if perfectPlusMode.keysAreInert { return }
+        if state.percentReady {
+            state.percentReady = false
+            state.userIsTyping = true
+        }
         let cleaned = state.display.replacingOccurrences(of: ",", with: "")
         if cleaned.count > 1 {
             state.display = CalculatorFormatter.formatDisplay(String(cleaned.dropLast()))
@@ -103,6 +115,7 @@ public struct CalculatorOperations {
         if perfectPlusMode.keysAreInert { return }
         state.display = "0"
         state.userIsTyping = false
+        state.percentReady = false
     }
 
     /// Clears the whole session, including the force count and any pending trick.

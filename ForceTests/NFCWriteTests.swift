@@ -7,7 +7,7 @@ import XCTest
 /// Writing a tag still needs a physical sticker under the phone. These tests confirm the
 /// phone can open that path and that the URL we would write names a performer.
 final class NFCWriteTests: XCTestCase {
-    func testNFCHardwareIsAvailableOnThisDevice() {
+    func testNFCHardwareIsAvailableOnThisDevice() throws {
         #if targetEnvironment(simulator)
         throw XCTSkip("Simulator has no NFC radio")
         #else

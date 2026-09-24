@@ -37,10 +37,10 @@ struct PeekStageView: View {
     private var content: some View {
         switch reader.state {
         case .value(let peek):
-            // Only the number on the spectator's screen right now. The steps that led to
-            // it are on the settings screen; this view exists to be read across a room,
-            // and anything more than one number defeats that.
-            Text(peek.latest?.value ?? "")
+            // The live line, including the key that just closed it (`123 +`). The full
+            // tape lives on the settings screen; this view exists to be read across a
+            // room, so it shows only the latest step.
+            Text(peek.latest?.line ?? "")
                 .font(.system(size: 800, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .minimumScaleFactor(0.02)

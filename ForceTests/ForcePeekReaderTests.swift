@@ -84,4 +84,22 @@ final class ForcePeekReaderTests: XCTestCase {
 
         XCTAssertEqual(calculation.latest?.value, "579")
     }
+
+    /// A live calculation keeps the fast cadence so the performer sees each digit.
+    func testActivePollIntervalWhileShowingAValue() {
+        let calculation = peek(at: Date())
+        XCTAssertEqual(
+            ForcePeekReader.pollInterval(for: .value(calculation)),
+            ForcePeekReader.activePollInterval
+        )
+    }
+
+    /// Silence stretches the gap so a phone left open with peek on does not burn
+    /// two requests a second all afternoon.
+    func testWaitingPollIntervalWhileQuiet() {
+        XCTAssertEqual(
+            ForcePeekReader.pollInterval(for: .waiting),
+            ForcePeekReader.waitingPollInterval
+        )
+    }
 }

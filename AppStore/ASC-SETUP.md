@@ -1,6 +1,6 @@
 # App Store Connect setup checklist
 
-Privacy policy (live): https://force-config.jonmobley.workers.dev/privacy
+Privacy policy (live): https://forcemagic.app/privacy
 
 ## App record
 
@@ -11,8 +11,8 @@ Privacy policy (live): https://force-config.jonmobley.workers.dev/privacy
 | SKU | force-calculator |
 | Primary language | English (U.S.) |
 | Category | Entertainment |
-| Privacy Policy URL | https://force-config.jonmobley.workers.dev/privacy |
-| Support URL | https://force-config.jonmobley.workers.dev/privacy |
+| Privacy Policy URL | https://forcemagic.app/privacy |
+| Support URL | https://forcemagic.app/support |
 
 Copy description, keywords, and promo text from [LISTING.md](LISTING.md).
 

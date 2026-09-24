@@ -2,8 +2,8 @@ import SwiftUI
 import PhotosUI
 import ForceShared
 
-/// Performer home. Each setting opens its own page from a row with an icon,
-/// a title, and a chevron, in the same shape as Apple Settings.
+/// Performer home. Force, including Perfect Plus, is edited here. Every other
+/// setting opens its own page from a row with an icon, a title, and a chevron.
 struct ContentView: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @EnvironmentObject private var configPublisher: ForceConfigPublisher
@@ -21,6 +21,7 @@ struct ContentView: View {
     var body: some View {
         NavigationStack {
             Form {
+                ForceTrickSection(forceNumberText: $forceNumberText)
                 trickLinks
                 performanceLinks
                 appLinks
@@ -62,10 +63,6 @@ struct ContentView: View {
 
     private var trickLinks: some View {
         Section {
-            settingsLink(.force, title: "Force", symbol: "wand.and.stars",
-                         color: .purple, detail: forceDetail)
-            settingsLink(.perfectPlus, title: "Perfect Plus", symbol: "plus",
-                         color: .green, detail: onOff(settings.perfectPlusEnabled))
             settingsLink(.livePeek, title: "Live Peek", symbol: "eye",
                          color: .blue, detail: livePeekDetail)
         }
@@ -104,10 +101,6 @@ struct ContentView: View {
     @ViewBuilder
     private func page(for route: ForceSettingsPage) -> some View {
         switch route {
-        case .force:
-            ForceTrickPage(forceNumberText: $forceNumberText)
-        case .perfectPlus:
-            ForcePerfectPlusPage()
         case .livePeek:
             ForceLivePeekPage(reader: peekReader, showingStage: $showingPeekStage)
         case .phone:
@@ -127,19 +120,10 @@ struct ContentView: View {
 
     // MARK: - Row values
 
-    private var forceDetail: String {
-        switch settings.magicTrickMode {
-        case .forceNumber:
-            return forceNumberText.isEmpty ? "Not Set" : forceNumberText
-        case .exactDateTime:
-            return "Date and Time"
-        }
-    }
-
     private var livePeekDetail: String {
         guard settings.livePeekEnabled else { return "Off" }
         if case .value(let peek) = peekReader.state, let latest = peek.latest {
-            return latest.value
+            return latest.line
         }
         return "On"
     }
@@ -157,10 +141,6 @@ struct ContentView: View {
         case .synced: return "Live"
         case .outOfDate: return "Out of Date"
         }
-    }
-
-    private func onOff(_ enabled: Bool) -> String {
-        enabled ? "On" : "Off"
     }
 
     // MARK: - Calculator bar

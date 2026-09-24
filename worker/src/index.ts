@@ -30,39 +30,28 @@
  * performers overwrote each other's force numbers and could read each other's peeks.
  */
 
-/** Largest accepted settings document. The real payload is a few hundred bytes. */
-const MAX_PAYLOAD_BYTES = 8 * 1024;
-
-/** A display value is at most ten digits plus grouping, sign, and a decimal. */
-const MAX_PEEK_VALUE_LENGTH = 64;
-
-/** Entry ids are minted by the clip and used as primary keys, so keep them boring. */
-const ENTRY_ID_PATTERN = /^[A-Za-z0-9_-]{1,80}$/;
-
-/** The only keys that can close an entry. Anything else is not from our calculator. */
-const OPERATORS = new Set(["+", "−", "×", "÷", "%", "="]);
-
-/**
- * How much of a calculation the performer can see at once. Comfortably more than any
- * spectator will type in one sitting, and small enough to read on a phone.
- */
-const MAX_ENTRIES = 40;
-
-/**
- * How long an entry stays readable. Long enough to cover a spectator taking their time,
- * short enough that the last person's numbers are gone before the next one starts.
- */
-const ENTRY_TTL_MS = 10 * 60 * 1000;
+import {
+  authorize,
+  bearerToken,
+  clearPeek,
+  corsHeaders,
+  json,
+  MAX_PAYLOAD_BYTES,
+  problem,
+  pruneExpiredPeeks,
+  readBoundedBody,
+  readPeek,
+  sha256Hex,
+  writePeek,
+  type PeekEnv,
+} from "./peek";
 
 const DEFAULT_ID = "default";
 
 /** Ids are used directly as primary keys, so keep them boring. */
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-interface Env {
-  DB: D1Database;
-  WRITE_TOKEN: string;
-}
+interface Env extends PeekEnv {}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -72,8 +61,16 @@ export default {
       return json({ ok: true });
     }
 
+    if (url.pathname === "/" || url.pathname === "") {
+      return homePage();
+    }
+
     if (url.pathname === "/privacy" || url.pathname === "/privacy/") {
       return privacyPolicy();
+    }
+
+    if (url.pathname === "/support" || url.pathname === "/support/") {
+      return supportPage();
     }
 
     if (url.pathname !== "/v1/config" && url.pathname !== "/v1/peek") {
@@ -110,6 +107,14 @@ export default {
       default:
         return problem(405, "Method not allowed");
     }
+  },
+
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<void> {
+    await pruneExpiredPeeks(env);
   },
 } satisfies ExportedHandler<Env>;
 
@@ -150,10 +155,15 @@ async function writeConfig(
     return problem(401, "Unauthorized");
   }
 
-  const body = await request.text();
-  if (body.length > MAX_PAYLOAD_BYTES) {
-    return problem(413, "Configuration too large");
+  const bounded = await readBoundedBody(
+    request,
+    MAX_PAYLOAD_BYTES,
+    "Configuration too large",
+  );
+  if (!bounded.ok) {
+    return bounded.response;
   }
+  const body = bounded.body;
 
   // Store the document verbatim so the Worker needs no knowledge of the app's
   // settings shape, but confirm it is JSON so a bad write cannot poison reads.
@@ -181,207 +191,54 @@ async function writeConfig(
   return new Response(null, { status: 204, headers: corsHeaders() });
 }
 
-// MARK: - Peek
+/** Brand landing for forcemagic.app — points reviewers and buyers to support. */
+function homePage(): Response {
+  const body = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Force — Calculator prop for magicians</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      max-width: 40rem;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+      color: #111;
+    }
+    @media (prefers-color-scheme: dark) { body { color: #eee; } }
+    h1 { font-size: 1.75rem; margin-bottom: 0.35rem; }
+    .meta { color: #666; font-size: 0.95rem; margin-bottom: 1.5rem; }
+    @media (prefers-color-scheme: dark) { .meta { color: #aaa; } }
+    a { color: inherit; }
+    ul { padding-left: 1.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Force</h1>
+  <p class="meta">Calculator prop for magicians</p>
+  <p>
+    Force is a working calculator that, at a moment you choose, lands on the number
+    you set in advance. Share it with a spectator via QR or NFC App Clip.
+  </p>
+  <ul>
+    <li><a href="/support">Support</a></li>
+    <li><a href="/privacy">Privacy policy</a></li>
+  </ul>
+</body>
+</html>`;
 
-/**
- * Returns the calculation the spectator has worked through, oldest first. Guarded by the
- * write token so only the performer can read it: the values are short-lived and
- * low-value, but they are still the spectator's input and should not be readable by a
- * guessed id.
- */
-async function readPeek(
-  request: Request,
-  env: Env,
-  id: string,
-): Promise<Response> {
-  const presented = bearerToken(request);
-  // Stricter than a write: a read has to match a record that already exists, so an
-  // unclaimed id cannot be used to fish for whatever a spectator happens to be typing.
-  if (presented === null || (await authorize(env, id, presented)) !== "matched") {
-    return problem(401, "Unauthorized");
-  }
-
-  const cutoff = Date.now() - ENTRY_TTL_MS;
-  const { results } = await env.DB.prepare(
-    `SELECT value, op, created_at FROM peek_entry
-     WHERE id = ? AND created_at >= ?
-     ORDER BY created_at ASC
-     LIMIT ?`,
-  )
-    .bind(id, cutoff, MAX_ENTRIES)
-    .all<{ value: string; op: string | null; created_at: number }>();
-
-  if (!results || results.length === 0) {
-    return problem(404, "No peek reported yet");
-  }
-
-  return json({
-    entries: results.map((row) => ({
-      value: row.value,
-      op: row.op ?? undefined,
-      at: row.created_at,
-    })),
-  });
-}
-
-/** Wipes the calculation so the next spectator starts on a clean readout. */
-async function clearPeek(
-  request: Request,
-  env: Env,
-  id: string,
-): Promise<Response> {
-  const presented = bearerToken(request);
-  if (presented === null || (await authorize(env, id, presented)) !== "matched") {
-    return problem(401, "Unauthorized");
-  }
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM peek_entry WHERE id = ?").bind(id),
-    env.DB.prepare("DELETE FROM peek WHERE id = ?").bind(id),
-  ]);
-  return new Response(null, { status: 204, headers: corsHeaders() });
-}
-
-/**
- * Records one number from the spectator's calculation. Left unauthenticated on purpose:
- * the clip that sends it can never hold the write token.
- *
- * The same `entryID` may be sent twice, first as a bare number and again once the key
- * that ended it is known, which is how `123` becomes `123 +` in place rather than
- * appearing as two separate numbers. A body with no `entryID` is an older clip, and is
- * stored as a single rolling entry so it still reads something.
- */
-async function writePeek(
-  request: Request,
-  env: Env,
-  id: string,
-): Promise<Response> {
-  const body = await request.text();
-  if (body.length > MAX_PAYLOAD_BYTES) {
-    return problem(413, "Peek too large");
-  }
-
-  let parsed: { value?: unknown; entryID?: unknown; op?: unknown };
-  try {
-    parsed = JSON.parse(body) as typeof parsed;
-  } catch {
-    return problem(400, "Body must be JSON");
-  }
-
-  const { value, entryID, op } = parsed;
-  if (typeof value !== "string" || value.length === 0 || value.length > MAX_PEEK_VALUE_LENGTH) {
-    return problem(400, "Invalid peek value");
-  }
-  if (op !== undefined && (typeof op !== "string" || !OPERATORS.has(op))) {
-    return problem(400, "Invalid operator");
-  }
-  const entry = typeof entryID === "string" ? entryID : "legacy";
-  if (!ENTRY_ID_PATTERN.test(entry)) {
-    return problem(400, "Invalid entry id");
-  }
-
-  const now = Date.now();
-  await env.DB.batch([
-    // `created_at` is held at its original value on conflict so attaching the operator
-    // does not shuffle a finished number to the end of the calculation.
-    env.DB.prepare(
-      `INSERT INTO peek_entry (id, entry_id, value, op, created_at) VALUES (?, ?, ?, ?, ?)
-       ON CONFLICT(id, entry_id) DO UPDATE SET value = excluded.value, op = excluded.op`,
-    ).bind(id, entry, value, op ?? null, now),
-    // Pruned on the way past, so nothing has to sweep and the previous spectator's
-    // numbers cannot survive into somebody else's performance.
-    env.DB.prepare("DELETE FROM peek_entry WHERE id = ? AND created_at < ?").bind(
-      id,
-      now - ENTRY_TTL_MS,
-    ),
-    // Kept in step for any clip still reading the single-value shape.
-    env.DB.prepare(
-      `INSERT INTO peek (id, value, updated_at) VALUES (?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-    ).bind(id, value, now),
-  ]);
-
-  return new Response(null, { status: 204, headers: corsHeaders() });
-}
-/** The bearer token on the request, or null when there is not one. */
-function bearerToken(request: Request): string | null {
-  const header = request.headers.get("authorization") ?? "";
-  const prefix = "Bearer ";
-  if (!header.startsWith(prefix)) {
-    return null;
-  }
-  const token = header.slice(prefix.length);
-  return token.length > 0 ? token : null;
-}
-
-type Claim = "matched" | "claim" | "denied";
-
-/**
- * Decides whether a token may act on an id.
- *
- * - `matched`: the id is already bound to this token.
- * - `claim`: the id is unused, so this token may take it.
- * - `denied`: the id belongs to someone else.
- *
- * Rows written before per-performer credentials existed carry no hash. Those stay on
- * the service-wide token, so the install that has been publishing to `default` all
- * along keeps its record instead of being locked out by its own upgrade.
- */
-async function authorize(env: Env, id: string, presented: string): Promise<Claim> {
-  const row = await env.DB.prepare("SELECT token_hash FROM config WHERE id = ?")
-    .bind(id)
-    .first<{ token_hash: string | null }>();
-
-  if (!row) {
-    return "claim";
-  }
-  if (row.token_hash) {
-    return constantTimeEqual(await sha256Hex(presented), row.token_hash)
-      ? "matched"
-      : "denied";
-  }
-  const legacy = env.WRITE_TOKEN ?? "";
-  return legacy.length > 0 && constantTimeEqual(presented, legacy)
-    ? "matched"
-    : "denied";
-}
-
-async function sha256Hex(value: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
-  return Array.from(new Uint8Array(digest))
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function constantTimeEqual(a: string, b: string): boolean {
-  const left = new TextEncoder().encode(a);
-  const right = new TextEncoder().encode(b);
-  if (left.byteLength !== right.byteLength) {
-    return false;
-  }
-  return crypto.subtle.timingSafeEqual(left, right);
-}
-
-function corsHeaders(): Record<string, string> {
-  return {
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, PUT, DELETE, OPTIONS",
-    "access-control-allow-headers": "authorization, content-type",
-  };
-}
-
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), {
-    status,
+  return new Response(body, {
+    status: 200,
     headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=300",
       ...corsHeaders(),
     },
   });
-}
-
-function problem(status: number, message: string): Response {
-  return json({ error: message }, status);
 }
 
 /** Public privacy policy for App Store Connect. HTML so a browser can open it. */
@@ -493,3 +350,72 @@ function privacyPolicy(): Response {
     },
   });
 }
+
+/** Support page required by App Store Connect (Guideline 1.5). */
+function supportPage(): Response {
+  const body = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Force — Support</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+      max-width: 40rem;
+      margin: 2rem auto;
+      padding: 0 1.25rem;
+      color: #111;
+    }
+    @media (prefers-color-scheme: dark) { body { color: #eee; } }
+    h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.15rem; margin-top: 1.75rem; }
+    .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    @media (prefers-color-scheme: dark) { .meta { color: #aaa; } }
+    ul { padding-left: 1.25rem; }
+  </style>
+</head>
+<body>
+  <h1>Force Support</h1>
+  <p class="meta">Force Calculator Magic — help for performers</p>
+
+  <p>
+    Force is a calculator prop for magicians. If something is not working during a
+    show or while setting up QR / NFC sharing, email and we will help you sort it out.
+  </p>
+
+  <h2>Contact</h2>
+  <p>
+    Jonathan Mobley —
+    <a href="mailto:jon.mobley@me.com">jon.mobley@me.com</a>
+  </p>
+
+  <h2>Common topics</h2>
+  <ul>
+    <li>App Clip QR code or NFC sticker not opening the spectator calculator</li>
+    <li>Live Peek not showing the spectator’s calculation</li>
+    <li>Settings not updating for spectators after you change the force number</li>
+    <li>Perfect Plus / face-down behavior</li>
+  </ul>
+
+  <h2>Privacy</h2>
+  <p>
+    See the
+    <a href="/privacy">privacy policy</a>
+    for what the app sends over the network.
+  </p>
+</body>
+</html>`;
+
+  return new Response(body, {
+    status: 200,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "public, max-age=300",
+      ...corsHeaders(),
+    },
+  });
+}
+

@@ -1,12 +1,7 @@
 # App Review notes
 
-Paste the section below into **App Review Information → Notes** in App Store Connect.
-Attach a screen recording of a full performance; the hidden controls are much easier to
-believe on video than in prose.
-
-Guideline 2.3.1 forbids *undocumented* hidden features, not hidden features. Everything
-the app deliberately conceals from a spectator is therefore spelled out here. If a
-control is not in this list, it should not be in the app.
+Paste into **App Review Information → Notes**. Reply in Resolution Center with the
+same answers where Apple asked for a message-thread response.
 
 ---
 
@@ -21,6 +16,32 @@ The calculator is deliberately unremarkable, because a spectator who notices any
 unusual about it has already seen through the trick. That means several controls are
 intentionally concealed **from the spectator**. None of them are concealed from you, and
 all of them are listed below.
+
+### Answers to the previous review
+
+**Price (Guideline 3.0).** Yes — **$49.99 is the intended price**. Force is a professional
+magician's prop, not a mass-market utility.
+
+**Equals after the selected count (Guideline 2.1).** With the defaults (force number
+4,556,325, activation count 3): type any calculation, then press `=`. The first two
+presses of `=` behave like a normal calculator (they show the true arithmetic result /
+repeat). On the **third** press of `=`, the display shows **4,556,325** instead of the
+arithmetic result. That is the force. Every other key does exactly what a calculator does.
+
+**Support URL (Guideline 1.5).** Updated to a live page we control:
+https://forcemagic.app/support
+
+**Screenshots (Guideline 2.3.3).** This build is **iPhone only** (no iPad). New screenshots
+show the real UI in use: force reveal, settings, QR/NFC share, and the performer home.
+Please ignore any leftover iPad media; the app no longer targets iPad.
+
+**NFC demo video (Guideline 2.1).** The app writes an App Clip invocation URL to a
+standard NFC sticker from **QR Code & NFC → Write to NFC Sticker**. There is no pairing
+or proprietary hardware — any NDEF-writable tag works. Hold the iPhone near the sticker
+when the system NFC sheet appears; after writing, tapping the sticker on another iPhone
+opens the Force App Clip. A short device recording of that write-and-tap flow is linked
+or attached with this submission when available; until then the steps above reproduce it
+on any NFC-capable iPhone with a blank sticker.
 
 ### The basic effect
 
@@ -69,8 +90,8 @@ App Store description states plainly that it is a magic trick.
 
 ### Privacy and the network
 
-The app talks to one service, a Cloudflare Worker at `force-config.jonmobley.workers.dev`,
-and sends only two things:
+The app talks to one Cloudflare Worker service (`force-config.jonmobley.workers.dev`,
+also on forcemagic.app) and sends only two things:
 
 - **The performer's own settings**, so that a printed QR code or an NFC sticker keeps
   working after the performer changes the force number. No personal data.

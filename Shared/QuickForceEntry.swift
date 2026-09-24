@@ -64,6 +64,15 @@ public final class QuickForceEntry: ObservableObject {
         )
     }
 
+    /// Whether equals presses count toward the force.
+    ///
+    /// Perfect Plus is the other reveal, so the saved count stays put and does not fire
+    /// while it is on. A count chosen from the clock still fires: that sequence picked
+    /// one on purpose.
+    public func countsActivation(settings: CalculatorSettings) -> Bool {
+        override != nil || !settings.perfectPlusEnabled
+    }
+
     /// Label for the covert mode badge, so a long press on the readout tells the
     /// performer whether they are on a temporary number or the saved one.
     public func modeName(settings: CalculatorSettings) -> String {

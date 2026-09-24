@@ -8,6 +8,21 @@ import ForceShared
 final class PerfectPlusFlowTests: XCTestCase {
     private let forceNumber = 4_556_325
 
+    /// The equals-press count is the other reveal, so it stays quiet while Perfect Plus
+    /// is the one in use. An immediate force would otherwise replace this sum.
+    func testOrdinarySumsStayHonestWhilePerfectPlusIsOn() {
+        let calculator = TestCalculator(
+            forceNumber: forceNumber,
+            activationCount: 1,
+            perfectPlusEnabled: true
+        )
+        calculator.type("2")
+        calculator.press(.add)
+        calculator.type("3")
+        calculator.equals()
+        XCTAssertEqual(calculator.display, "5")
+    }
+
     func testRevealLeavesNoPendingAddBehind() {
         let calculator = TestCalculator(forceNumber: forceNumber, activationCount: 3)
         calculator.reachTheForce(savedNumber: 100)

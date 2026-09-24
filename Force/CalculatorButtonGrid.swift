@@ -6,6 +6,7 @@ import ForceShared
 struct CalculatorButtonGrid: View {
     @ObservedObject var settings: CalculatorSettings
     @Binding var showForceNumber: Bool
+    var selectedOperation: CalculatorOperation? = nil
     let digitAction: (String) -> Void
     let decimalAction: () -> Void
     let backspaceAction: () -> Void
@@ -18,6 +19,7 @@ struct CalculatorButtonGrid: View {
         CalculatorKeypad(
             settings: settings,
             showForceNumber: $showForceNumber,
+            selectedOperation: selectedOperation,
             digitAction: digitAction,
             decimalAction: decimalAction,
             backspaceAction: backspaceAction,

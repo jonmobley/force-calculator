@@ -23,9 +23,18 @@ final class ForcePeekReader: ObservableObject {
         case notAuthorized
     }
 
-    /// How often the readout asks the service. The wait is measured from the start
-    /// of a poll, so a slow reply does not add a second gap on top of itself.
-    private static let pollInterval: Duration = .milliseconds(500)
+    /// How often the readout asks while a calculation is on screen.
+    ///
+    /// The wait is measured from the start of a poll, so a slow reply does not add a
+    /// second gap on top of itself.
+    nonisolated static let activePollInterval: Duration = .milliseconds(500)
+
+    /// How often the readout asks while nothing has been reported yet.
+    ///
+    /// A quiet phone in the foreground would otherwise burn two requests a second for
+    /// hours. The first digit after a silence can take about this long plus the clip's
+    /// debounce before it shows.
+    nonisolated static let waitingPollInterval: Duration = .seconds(2)
 
     /// A peek older than this is treated as nothing.
     ///
@@ -89,18 +98,35 @@ final class ForcePeekReader: ObservableObject {
         return age <= staleAfter ? peek : nil
     }
 
+    /// How long to wait before the next poll for the current readout state.
+    ///
+    /// Pure so the backoff rule can be tested without running the loop.
+    nonisolated static func pollInterval(for state: State) -> Duration {
+        switch state {
+        case .value:
+            return activePollInterval
+        case .waiting, .idle, .notAuthorized:
+            return waitingPollInterval
+        }
+    }
+
     private func loop() async {
         while !Task.isCancelled {
             let started = ContinuousClock.now
-            await poll()
-            let remaining = Self.pollInterval - started.duration(to: .now)
+            let keepGoing = await poll()
+            if !keepGoing {
+                task = nil
+                return
+            }
+            let remaining = Self.pollInterval(for: state) - started.duration(to: .now)
             if remaining > .zero {
                 try? await Task.sleep(for: remaining)
             }
         }
     }
 
-    private func poll() async {
+    /// Fetches once. Returns false when polling must stop (a permanent auth failure).
+    private func poll() async -> Bool {
         let credentials = PerformerCredentials.current()
         do {
             let peek = try await ForcePeekService.fetch(
@@ -113,11 +139,15 @@ final class ForcePeekReader: ObservableObject {
                 // Nothing reported, or only a value too old to trust.
                 state = .waiting
             }
+            return true
         } catch ForceConfigService.ServiceError.unauthorized {
+            // Permanent: keep hammering D1 would only burn the day's allowance.
             state = .notAuthorized
+            return false
         } catch {
             // Transient: leave the last state in place rather than blanking it.
             debugLog("👁️ Peek read failed: \(error)")
+            return true
         }
     }
 }

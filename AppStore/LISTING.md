@@ -47,15 +47,15 @@ magic,magician,mentalism,calculator,prop,prediction,force,app clip,nfc,qr
 
 ## Support URL
 
-https://force-config.jonmobley.workers.dev/privacy
+https://forcemagic.app/support
 
 ## Marketing URL (optional)
 
-https://force-config.jonmobley.workers.dev/privacy
+https://forcemagic.app
 
 ## Privacy Policy URL
 
-https://force-config.jonmobley.workers.dev/privacy
+https://forcemagic.app/privacy
 
 ## Copyright
 
