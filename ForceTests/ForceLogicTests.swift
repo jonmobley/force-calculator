@@ -372,19 +372,11 @@ final class ForceLogicTests: XCTestCase {
     }
 
     func testAutosaveCoalescesEditsIntoOneWrite() {
-        let suite = UserDefaults(suiteName: CalculatorSettings.appGroup) ?? .standard
+        let suite = privateSettingsSuite()
         let key = CalculatorSettings.userDefaultsKey
-        let original = suite.data(forKey: key)
-        defer {
-            if let original {
-                suite.set(original, forKey: key)
-            } else {
-                suite.removeObject(forKey: key)
-            }
-        }
-        suite.removeObject(forKey: key)
 
         let settings = CalculatorSettings()
+        settings.defaultsStore = suite
         settings.beginAutosave()
         settings.forceNumber = 1234
         settings.activationCount = 7
@@ -393,6 +385,7 @@ final class ForceLogicTests: XCTestCase {
 
         settings.flushPendingSave()
         let reloaded = CalculatorSettings()
+        reloaded.defaultsStore = suite
         reloaded.loadSettings()
         XCTAssertEqual(reloaded.forceNumber, 1234)
         XCTAssertEqual(reloaded.activationCount, 7)
@@ -400,19 +393,11 @@ final class ForceLogicTests: XCTestCase {
     }
 
     func testAutosaveWritesAfterCoalescingWindow() {
-        let suite = UserDefaults(suiteName: CalculatorSettings.appGroup) ?? .standard
+        let suite = privateSettingsSuite()
         let key = CalculatorSettings.userDefaultsKey
-        let original = suite.data(forKey: key)
-        defer {
-            if let original {
-                suite.set(original, forKey: key)
-            } else {
-                suite.removeObject(forKey: key)
-            }
-        }
-        suite.removeObject(forKey: key)
 
         let settings = CalculatorSettings()
+        settings.defaultsStore = suite
         settings.beginAutosave()
         settings.forceNumber = 5678
 
@@ -423,8 +408,17 @@ final class ForceLogicTests: XCTestCase {
         wait(for: [written], timeout: 3)
 
         let reloaded = CalculatorSettings()
+        reloaded.defaultsStore = suite
         reloaded.loadSettings()
         XCTAssertEqual(reloaded.forceNumber, 5678)
+    }
+
+    /// A suite the host app does not use, so these tests can run beside it.
+    private func privateSettingsSuite() -> UserDefaults {
+        let name = "ForceTests.autosave.\(UUID().uuidString)"
+        let suite = UserDefaults(suiteName: name)!
+        addTeardownBlock { suite.removePersistentDomain(forName: name) }
+        return suite
     }
 
     /// The whole point of the config service: a written sticker must keep working

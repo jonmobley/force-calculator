@@ -164,9 +164,15 @@ public class CalculatorSettings: ObservableObject, Codable {
         livePeekEnabled = stored.livePeekEnabled
     }
 
+    /// Where this object loads and saves. Nil uses the app-group suite.
+    ///
+    /// Tests set a private suite so a parallel run does not share the performer's
+    /// settings with the host app or with each other.
+    public var defaultsStore: UserDefaults?
+
     /// Replaces this object with the suite record, or leaves the defaults in place.
     public func loadSettings() {
-        let defaults = Self.suiteDefaults()
+        let defaults = persistedDefaults()
         guard let data = defaults.data(forKey: Self.userDefaultsKey),
               let stored = try? JSONDecoder().decode(CalculatorSettings.self, from: data) else {
             debugLog("ℹ️ CalculatorSettings: No saved settings found, using defaults")
@@ -178,7 +184,7 @@ public class CalculatorSettings: ObservableObject, Codable {
 
     /// Writes this object into the app-group suite.
     public func saveSettings() {
-        let defaults = Self.suiteDefaults()
+        let defaults = persistedDefaults()
         guard let data = try? JSONEncoder().encode(self) else {
             debugLog("❌ CalculatorSettings: Failed to encode settings")
             return
@@ -242,6 +248,10 @@ public class CalculatorSettings: ObservableObject, Codable {
     /// have to be added to each of them.
     public var forcedNumber: Int {
         magicTrickMode == .forceNumber ? forceNumber : getCurrentDateTimeNumber()
+    }
+
+    private func persistedDefaults() -> UserDefaults {
+        defaultsStore ?? Self.suiteDefaults()
     }
 
     private static func suiteDefaults() -> UserDefaults {

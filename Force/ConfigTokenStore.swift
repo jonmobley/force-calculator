@@ -11,7 +11,9 @@ import Security
 /// The Keychain outlives a delete and reinstall, which matters: the id is printed on
 /// every QR code and NFC tag in circulation, so losing it would strand them all.
 enum ConfigTokenStore {
-    private static let service = "com.mobleypro.mobley.Force.configWriteToken"
+    /// The performer's real keychain service. Tests pass a different one so a
+    /// parallel run cannot delete the id printed on live QR codes.
+    static let productionService = "com.mobleypro.mobley.Force.configWriteToken"
 
     /// The write token's account. Named `default` because that is where it has always
     /// been stored, and renaming it would orphan the token on existing installs.
@@ -19,7 +21,12 @@ enum ConfigTokenStore {
     static let performerAccount = "performerID"
 
     /// Returns the stored value, or nil when there is none.
-    static func load(account: String = tokenAccount) -> String? {
+    ///
+    /// - Parameter service: Keychain service. Defaults to the performer's.
+    static func load(
+        account: String = tokenAccount,
+        service: String = productionService
+    ) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -38,10 +45,16 @@ enum ConfigTokenStore {
     }
 
     /// Stores the value, replacing any previous one. An empty string clears it.
+    ///
+    /// - Parameter service: Keychain service. Defaults to the performer's.
     @discardableResult
-    static func save(_ token: String, account: String = tokenAccount) -> Bool {
+    static func save(
+        _ token: String,
+        account: String = tokenAccount,
+        service: String = productionService
+    ) -> Bool {
         let trimmed = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return delete(account: account) }
+        guard !trimmed.isEmpty else { return delete(account: account, service: service) }
 
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -62,8 +75,14 @@ enum ConfigTokenStore {
         return SecItemAdd(query.merging(attributes) { $1 } as CFDictionary, nil) == errSecSuccess
     }
 
+    /// Removes one account. A missing item counts as success.
+    ///
+    /// - Parameter service: Keychain service. Defaults to the performer's.
     @discardableResult
-    static func delete(account: String = tokenAccount) -> Bool {
+    static func delete(
+        account: String = tokenAccount,
+        service: String = productionService
+    ) -> Bool {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,

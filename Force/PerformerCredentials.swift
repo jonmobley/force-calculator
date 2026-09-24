@@ -12,49 +12,78 @@ import ForceShared
 /// The service binds an id to the first token that writes it, so generating locally is
 /// enough to claim a record that nobody else can then overwrite.
 enum PerformerCredentials {
-    private static var cached: (identifier: String, writeToken: String)?
+    private static let cacheLock = NSLock()
+    private static var cached: [String: (identifier: String, writeToken: String)] = [:]
 
     /// The identity to publish under, creating one on first use.
-    static func current() -> (identifier: String, writeToken: String) {
-        if let cached { return cached }
-        let resolved = resolve()
-        cached = resolved
+    ///
+    /// - Parameter service: Keychain service. Tests pass their own so they never
+    ///   share, or wipe, the performer's record.
+    static func current(
+        service: String = ConfigTokenStore.productionService
+    ) -> (identifier: String, writeToken: String) {
+        cacheLock.lock()
+        if let existing = cached[service] {
+            cacheLock.unlock()
+            return existing
+        }
+        cacheLock.unlock()
+
+        let resolved = resolve(service: service)
+        cacheLock.lock()
+        if let existing = cached[service] {
+            cacheLock.unlock()
+            return existing
+        }
+        cached[service] = resolved
+        cacheLock.unlock()
         return resolved
     }
 
     static var identifier: String { current().identifier }
     static var writeToken: String { current().writeToken }
 
-    /// Forgets the cached value so the next read comes from the Keychain. Tests only.
-    static func forgetCache() {
-        cached = nil
+    /// Forgets one cached identity so the next read comes from the Keychain. Tests only.
+    static func forgetCache(service: String = ConfigTokenStore.productionService) {
+        cacheLock.lock()
+        cached.removeValue(forKey: service)
+        cacheLock.unlock()
     }
 
-    private static func resolve() -> (identifier: String, writeToken: String) {
-        let storedToken = ConfigTokenStore.load()
+    private static func resolve(
+        service: String
+    ) -> (identifier: String, writeToken: String) {
+        let storedToken = ConfigTokenStore.load(service: service)
 
-        if let id = ConfigTokenStore.load(account: ConfigTokenStore.performerAccount) {
-            return (id, storedToken ?? makeToken())
+        if let id = ConfigTokenStore.load(
+            account: ConfigTokenStore.performerAccount,
+            service: service
+        ) {
+            return (id, storedToken ?? makeToken(service: service))
         }
 
         // No id stored yet. A token already here means this install was publishing under
         // the shared id before performers had their own, so it keeps both: the record it
         // owns and the tags already pointing at it stay valid.
         if let storedToken {
-            ConfigTokenStore.save(PerformerID.shared, account: ConfigTokenStore.performerAccount)
+            ConfigTokenStore.save(
+                PerformerID.shared,
+                account: ConfigTokenStore.performerAccount,
+                service: service
+            )
             debugLog("🔑 Kept the shared performer id for an install that already published")
             return (PerformerID.shared, storedToken)
         }
 
         let id = PerformerID.generate()
-        ConfigTokenStore.save(id, account: ConfigTokenStore.performerAccount)
+        ConfigTokenStore.save(id, account: ConfigTokenStore.performerAccount, service: service)
         debugLog("🔑 Claimed a new performer id")
-        return (id, makeToken())
+        return (id, makeToken(service: service))
     }
 
-    private static func makeToken() -> String {
+    private static func makeToken(service: String) -> String {
         let token = PerformerID.generateToken()
-        ConfigTokenStore.save(token)
+        ConfigTokenStore.save(token, service: service)
         return token
     }
 }
