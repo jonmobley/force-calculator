@@ -47,7 +47,7 @@ Upload from `Screenshots/iPhone-6.9/` (1320×2868, no alpha):
 ## App Review
 
 Paste [REVIEW-NOTES.md](REVIEW-NOTES.md) into App Review Information → Notes.
-Attach a performance video. Contact: jon.mobley@me.com
+Attach a performance video. Contact: jonmobley@gmail.com
 
 ## Product decisions already made
 
@@ -58,8 +58,7 @@ Attach a performance video. Contact: jon.mobley@me.com
 
 API keys are already on disk:
 
-- `~/.appstoreconnect/private_keys/AuthKey_RMTQJ69QZD.p8`
-- `~/.appstoreconnect/private_keys/AuthKey_F94A5D2R25.p8`
+- `~/.appstoreconnect/private_keys/AuthKey_M9XV4SS39X.p8` (Force Calculator, Admin)
 
 This Mac has an **Apple Development** identity only — no **Apple Distribution**
 certificate yet. Xcode will create one on first App Store export when signed in.
@@ -69,7 +68,7 @@ To finish ASC + upload in one shot, copy the Issuer ID from
 (the UUID above the keys table), then:
 
 ```bash
-export APP_STORE_CONNECT_API_KEY_ID=RMTQJ69QZD
+export APP_STORE_CONNECT_API_KEY_ID=M9XV4SS39X
 export APP_STORE_CONNECT_API_ISSUER_ID='paste-uuid-here'
 ./AppStore/asc-ship.sh
 ```

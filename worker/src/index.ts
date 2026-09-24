@@ -389,7 +389,7 @@ function supportPage(): Response {
   <h2>Contact</h2>
   <p>
     Jonathan Mobley —
-    <a href="mailto:jon.mobley@me.com">jon.mobley@me.com</a>
+    <a href="mailto:jonmobley@gmail.com">jonmobley@gmail.com</a>
   </p>
 
   <h2>Common topics</h2>

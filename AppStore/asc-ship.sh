@@ -2,7 +2,7 @@
 # Create the Force App Store Connect record and upload a build.
 #
 # Requires:
-#   export APP_STORE_CONNECT_API_KEY_ID=RMTQJ69QZD   # or F94A5D2R25
+#   export APP_STORE_CONNECT_API_KEY_ID=M9XV4SS39X   # Force Calculator, Admin
 #   export APP_STORE_CONNECT_API_ISSUER_ID=<uuid from Users and Access → Keys>
 #   Auth key at ~/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8
 #
@@ -15,7 +15,16 @@ ISSUER="${APP_STORE_CONNECT_API_ISSUER_ID:?set APP_STORE_CONNECT_API_ISSUER_ID}"
 KEY_PATH="${HOME}/.appstoreconnect/private_keys/AuthKey_${KEY_ID}.p8"
 test -f "$KEY_PATH" || { echo "missing $KEY_PATH"; exit 1; }
 
-python3 - <<'PY' "$KEY_ID" "$ISSUER" "$KEY_PATH" "$ROOT"
+# Homebrew Python refuses a system-wide pip install. ES256 needs both
+# PyJWT and cryptography, kept in a local venv.
+VENV="$ROOT/AppStore/.venv"
+PY="$VENV/bin/python"
+if ! "$PY" -c "import jwt, cryptography" >/dev/null 2>&1; then
+  python3 -m venv "$VENV"
+  "$VENV/bin/pip" install --quiet PyJWT cryptography
+fi
+
+"$PY" - <<'PY' "$KEY_ID" "$ISSUER" "$KEY_PATH" "$ROOT"
 import json, pathlib, sys, time, urllib.request, urllib.error, jwt
 
 kid, issuer, key_path, root = sys.argv[1:5]

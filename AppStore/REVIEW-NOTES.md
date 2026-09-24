@@ -1,118 +1,68 @@
 # App Review notes
 
-Paste into **App Review Information → Notes**. Reply in Resolution Center with the
-same answers where Apple asked for a message-thread response.
+Paste everything below the line into App Review Information → Notes.
+The field must be under 4,000 characters.
 
 ---
 
-## Notes for the reviewer
+Force is a calculator prop for magicians. When the performer chooses, it shows a number set in advance, so a spectator's arithmetic appears to land on that prediction. Some controls are hidden from the spectator. None are hidden from you.
 
-Force is a prop for magicians, sold to performers rather than to the general public. It
-presents a working calculator that, at a moment the performer chooses, displays a number
-the performer picked in advance. The effect is that a spectator's own arithmetic appears
-to land on a prediction the performer made earlier.
+PREVIOUS REVIEW
 
-The calculator is deliberately unremarkable, because a spectator who notices anything
-unusual about it has already seen through the trick. That means several controls are
-intentionally concealed **from the spectator**. None of them are concealed from you, and
-all of them are listed below.
+Price (3.0). Yes. $49.99 is the intended price. This is a professional prop, not a mass-market utility.
 
-### Answers to the previous review
+Equals (2.1). Defaults: force number 4,556,325, count 3. Type 12 + 34 and press equals. The display shows 46. Press equals again and it repeats, like a normal calculator. On the third press the display shows 4,556,325. That is the force. Every other key does what a calculator key does.
 
-**Price (Guideline 3.0).** Yes — **$49.99 is the intended price**. Force is a professional
-magician's prop, not a mass-market utility.
+Support URL (1.5). https://forcemagic.app/support
 
-**Equals after the selected count (Guideline 2.1).** With the defaults (force number
-4,556,325, activation count 3): type any calculation, then press `=`. The first two
-presses of `=` behave like a normal calculator (they show the true arithmetic result /
-repeat). On the **third** press of `=`, the display shows **4,556,325** instead of the
-arithmetic result. That is the force. Every other key does exactly what a calculator does.
+Screenshots (2.3.3). iPhone only. Screenshots show the real UI: force reveal, settings, QR/NFC, and the performer home. Please ignore leftover iPad media.
 
-**Support URL (Guideline 1.5).** Updated to a live page we control:
-https://forcemagic.app/support
+NFC (2.1). Open QR Code & NFC and tap Write to NFC Sticker. No pairing or special hardware. Any NDEF tag works. Hold the phone to the sticker when the system sheet appears. Tap that sticker on another iPhone to open the App Clip. Those steps reproduce it on any NFC iPhone with a blank sticker.
 
-**Screenshots (Guideline 2.3.3).** This build is **iPhone only** (no iPad). New screenshots
-show the real UI in use: force reveal, settings, QR/NFC share, and the performer home.
-Please ignore any leftover iPad media; the app no longer targets iPad.
+HOW TO SEE IT
 
-**NFC demo video (Guideline 2.1).** The app writes an App Clip invocation URL to a
-standard NFC sticker from **QR Code & NFC → Write to NFC Sticker**. There is no pairing
-or proprietary hardware — any NDEF-writable tag works. Hold the iPhone near the sticker
-when the system NFC sheet appears; after writing, tapping the sticker on another iPhone
-opens the Force App Clip. A short device recording of that write-and-tap flow is linked
-or attached with this submission when available; until then the steps above reproduce it
-on any NFC-capable iPhone with a blank sticker.
+1. Open the app. The first screen sets the force number and how many equals presses come before it appears.
+2. Leave the defaults (4556325, count 3) and tap Open Force Calculator.
+3. Type 12 + 34 and press equals. The display shows 46.
+4. Press equals twice more. The third press shows 4,556,325.
 
-### The basic effect
+CONCEALED CONTROLS
 
-1. Open the app. The first screen is the performer's setup: a force number, and how many
-   presses of equals should pass before it appears.
-2. Leave the defaults (force number 4556325, activation count 3) and tap **Open Force
-   Calculator**.
-3. Type `12 + 34 =`. The display shows `46`, the correct answer.
-4. Press `=` twice more. On the third press the display shows **4,556,325** instead of
-   the arithmetic result. That is the force.
+Force reveal. The Nth press of equals (N is set in settings) replaces the result with the force number.
 
-Every other press of every other key does exactly what a calculator does.
+Performer's crib. Long-press the readout for 0.6 seconds. A badge shows the mode and the number equals will land on, then hides after 1.5 seconds.
 
-### Concealed controls, in full
+Leave the calculator. Long-press the clock icon, top left, for 0.45 seconds to return to settings. There is no Back button, so a spectator does not see that this is not the system calculator.
 
-| Control | How it is triggered | What it does |
-| --- | --- | --- |
-| Force reveal | The Nth press of `=`, N set in settings | Replaces the result with the force number |
-| Performer's crib | Long press the number readout for 0.6s | Shows a small badge with the current mode and the number equals will land on. Auto-hides after 1.5s |
-| Leave the calculator | Long press the clock icon, top left, for 0.45s | Returns to the settings screen. There is no visible Back button, because a spectator seeing one would know this is not the system calculator |
-| Mode switch | Single tap the icon at top right | Switches between a fixed force number and a number built from the current date and time |
-| Quick force entry | Tap the clock icon, type a number, press `=`, then press one digit | Overrides the force number and activation count for this session only. Never written to storage |
-| Perfect Plus | Enabled in settings. Press `+`, then turn the phone face down | Works out the number that makes the running total equal the force, and places it on the display while the screen is hidden. The keypad is deliberately inert while the phone is face down so a stray touch cannot disturb it |
-| Start with Screenshot | Enabled in settings | See the note below |
-| Live Peek | Enabled in settings | See the privacy note below |
+Mode switch. Tap the top-right icon to switch between a fixed number and one built from the date and time.
 
-### About "Start with Screenshot"
+Quick force entry. Tap the clock, type a number, press equals, then one digit. Sets the force number and count for this session only. Not saved.
 
-With this setting on, the app launches showing an image the performer chose from their
-own photo library, and a tap anywhere opens the calculator. Performers use a photo of
-their own Home Screen so that handing over an unlocked phone does not reveal which app
-is running.
+Perfect Plus. Turn it on in settings, press plus, then turn the phone face down. The number that completes the total to the force appears while the screen is hidden. The keypad is inert face-down.
 
-We want to flag this explicitly rather than have you find it. If you would prefer the app
-not to be able to imitate the Home Screen, we will remove the setting — please tell us
-and we will resubmit without it. It is not central to the product.
+Start with Screenshot and Live Peek are described below.
 
-### On resemblance to Apple's Calculator
+START WITH SCREENSHOT
 
-The calculator is styled to look ordinary, and it necessarily resembles a plain
-four-function calculator. It does not claim to be Apple's Calculator, is not named after
-it, and carries its own icon and app name. Its layout differs from Apple's: the top row
-is backspace, AC and percent, there is no scientific mode, and the operator keys are
-tinted in a colour the performer chooses. The app is listed under Entertainment, and the
-App Store description states plainly that it is a magic trick.
+When on, launch shows a photo the performer picked, and a tap opens the calculator. They use a photo of their own Home Screen so an unlocked phone does not reveal which app is running. If you want this removed, tell us and we will resubmit without it.
 
-### Privacy and the network
+RESEMBLANCE TO APPLE'S CALCULATOR
 
-The app talks to one Cloudflare Worker service (`force-config.jonmobley.workers.dev`,
-also on forcemagic.app) and sends only two things:
+It is meant to look ordinary. It is not named Calculator, does not claim to be Apple's, and has its own icon. Top row is backspace, AC, and percent. No scientific mode. The performer picks the operator color. Category is Entertainment. The description says it is a magic trick.
 
-- **The performer's own settings**, so that a printed QR code or an NFC sticker keeps
-  working after the performer changes the force number. No personal data.
-- **Live Peek**, off by default. When the performer switches it on, the calculation the
-  spectator types into the App Clip is sent so the performer can read it on their own
-  phone. Entries are short numeric strings and operators, kept briefly for the
-  performance, then expire automatically; the performer can clear them at any time.
-  They are never associated with a person or a device identifier.
+PRIVACY
 
-There are no accounts, no analytics, no advertising, and no third-party SDKs. Each
-install generates a random identifier and a random token on the device; neither is
-derived from anything about the user or the hardware.
+One service: force-config.jonmobley.workers.dev (also forcemagic.app). It sends only:
 
-### The App Clip
+- The performer's settings, so a QR code or NFC sticker still works after the force number changes. No personal data.
+- Live Peek, off by default. When on, the App Clip sends the calculation so the performer can read it. Short numeric text, kept briefly, then it expires. The performer can clear it. Not tied to a person or device.
 
-The App Clip is the spectator's side. The performer shares a QR code or NFC sticker, the
-spectator's phone opens the same calculator, and the force works there identically. The
-clip reads the performer's current settings from the service at launch. To test it, open
-the QR Code & NFC screen in the app and scan the code shown with a second device.
+No accounts, analytics, ads, or third-party SDKs. Each install creates a random id and token. Neither comes from the user or the hardware.
 
-### Contact
+APP CLIP
 
-Happy to demonstrate the trick over a call if anything here is easier to see than to
-read.
+The clip is the spectator's calculator, opened from a QR code or NFC sticker. It loads current settings at launch. To test, open QR Code & NFC and scan with a second device.
+
+https://appclip.apple.com/id?p=com.mobleypro.mobley.Force.Clip
+
+Happy to demonstrate on a call.
