@@ -152,8 +152,8 @@ public class CalculatorSettings: ObservableObject, Codable {
         perfectPlusHapticsEnabled = try container
             .decodeIfPresent(Bool.self, forKey: .perfectPlusHapticsEnabled) ?? true
         startWithScreenshot = try container.decodeIfPresent(Bool.self, forKey: .startWithScreenshot) ?? false
-        livePeekEnabled = Self.livePeekAvailable
-            && (try container.decodeIfPresent(Bool.self, forKey: .livePeekEnabled) ?? false)
+        let storedPeek = try container.decodeIfPresent(Bool.self, forKey: .livePeekEnabled)
+        livePeekEnabled = Self.livePeekAvailable && (storedPeek ?? false)
     }
 
     public func encode(to encoder: Encoder) throws {
