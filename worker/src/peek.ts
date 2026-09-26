@@ -283,13 +283,15 @@ export async function authorize(
   if (!row) {
     return "claim";
   }
+  const presentedHash = await sha256Hex(presented);
   if (row.token_hash) {
-    return constantTimeEqual(await sha256Hex(presented), row.token_hash)
-      ? "matched"
-      : "denied";
+    return constantTimeEqual(presentedHash, row.token_hash) ? "matched" : "denied";
   }
+  // Hashing both sides gives equal-length inputs, so the length check in
+  // `constantTimeEqual` cannot leak how long the service-wide token is.
   const legacy = env.WRITE_TOKEN ?? "";
-  return legacy.length > 0 && constantTimeEqual(presented, legacy)
+  return legacy.length > 0 &&
+    constantTimeEqual(presentedHash, await sha256Hex(legacy))
     ? "matched"
     : "denied";
 }
