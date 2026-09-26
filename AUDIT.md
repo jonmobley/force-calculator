@@ -58,14 +58,15 @@ Fix: a press that peeked no longer runs the action, and the timer stops when the
 a force. The settings screen allows 1 to 10. Fix: clamped to `1...10` on URL apply and on decode.
 
 **H4. `fn` (force number) from links and config is not range-checked** — **Fixed**
-Negative, zero or numbers over ten digits got past `ForceNumberEditor`'s limits. Fix: clamped to
-`1...9_999_999_999` on URL apply and on decode.
+Negative numbers or numbers over ten digits got past `ForceNumberEditor`'s limits. Fix: clamped
+to `0...9_999_999_999` (what the editor accepts) on URL apply and on decode. Both ranges now live
+on `CalculatorSettings`, and the settings picker uses the same one.
 
 ### Medium
 
 | # | Finding | Where | Status |
 |---|---|---|---|
-| M1 | The Perfect Plus number reaches the Live Peek transcript. `peekSuppressed` was only true for `armed`/`staged`, so the equals press in `.calculated` reported a number the spectator never typed. | `ForceClip/CalculatorView.swift` `peekSuppressed` | **Fixed** |
+| M1 | The Perfect Plus number reaches the Live Peek transcript. `peekSuppressed` was only true for `armed`/`staged`, and equals checked it after the reveal had reset the trick, so the staged number was reported as if typed. Now suppressed while it is on screen, and read before evaluating. | `ForceClip/CalculatorView.swift` `peekSuppressed` | **Fixed** |
 | M2 | The clear key differs between the two calculators. The host toggles clear-entry / clear-all, the Clip always clears everything. | `Force/CalculatorView.swift` `hasEntryToClear`; `ForceClip/CalculatorView.swift` clear | Backlog |
 | M3 | Quick Force truncates decimals: `12.5` passes the range check and becomes `12`. | `Shared/QuickForceEntry.swift` ~152-158 | Backlog |
 | M4 | Floating-point tails. `0.1 + 0.2` can show a long fraction; a stock calculator rounds for display. | `Shared/CalculatorFormatter.swift` `grouped` | Backlog |
@@ -110,7 +111,8 @@ changes no row is re-authorized once and otherwise gets a 401.
 **S2. The app shows the id before the claim lands** — **Fixed**
 `Force/QRCodeNFCView.swift` built the QR code, the NFC payload and the copy link from the id as
 soon as it was minted. Anyone who saw it before the first `PUT` succeeded could claim it. Fix:
-the share sections wait until the config has published once.
+the QR code and NFC writer appear only once a publish has succeeded for this id. That is
+remembered across launches, so an offline performer can still write tags later.
 
 ### Medium
 
@@ -157,7 +159,7 @@ speak to the performer, not to the person whose input is sent. Options:
 
 | # | Finding | Where | Status |
 |---|---|---|---|
-| A2 | The manifests and the App Privacy checklist don't declare the persistent performer id; user content is marked not linked. | `Force/PrivacyInfo.xcprivacy`, `ForceClip/PrivacyInfo.xcprivacy`, `AppStore/ASC-SETUP.md` | **Fixed** |
+| A2 | The Force manifest and the App Privacy checklist don't declare the persistent performer id, and user content is marked not linked. Now User ID plus linked content in the Force manifest and checklist. The Clip manifest stays not linked, because the spectator's input is stored under the performer's id and nothing identifies the spectator; its outdated comment is corrected. | `Force/PrivacyInfo.xcprivacy`, `ForceClip/PrivacyInfo.xcprivacy`, `AppStore/ASC-SETUP.md` | **Fixed** |
 | A3 | The Force manifest gives only `CA92.1` for UserDefaults, but settings use an App Group suite, which needs `1C8F.1`. | `Force/PrivacyInfo.xcprivacy`; `Shared/CalculatorSettings.swift` | **Fixed** |
 | A4 | "Start with Screenshot" imitates the Home Screen and the calculator looks stock. Disclosed in the review notes, but Review may still object (2.3.1). Attach a demo video. | `Force/ScreenshotView.swift`; `AppStore/REVIEW-NOTES.md` | Backlog |
 | A5 | Config is publicly readable by id (see Worker). Make sure the privacy page says so. | `Shared/ForceConfigService.swift` | Backlog |
@@ -196,7 +198,8 @@ speak to the performer, not to the person whose input is sent. Options:
   drift (M2) came from this. Move the key handling into `Shared/`.
 - **No CI.** There is no `.github/`. Add `xcodebuild test` on a macOS runner and
   `npm run typecheck` for the Worker.
-- **No Worker tests** and no lint. `worker/package.json` has only `typecheck` and `check`.
+- **No Worker tests** and no lint. `worker/package.json` has only `typecheck` and `check`, and
+  `npm run check` fails on the installed Wrangler 4, where `wrangler check` needs a subcommand.
 - **`ForceConfigService` has no tests.** Stub `URLSession` with a `URLProtocol` subclass.
 
 ### Medium (Backlog)
@@ -229,7 +232,15 @@ orphan files.
 
 ## Verification on this branch
 
-- Worker: `npm run typecheck` and `npm run check`.
-- Swift: every file parses with Swift 6.4 on Linux, and the Foundation-only calculator files
-  type-check. SwiftUI, UIKit, CoreMotion and Security code cannot build on Linux, so the XCTest
-  suite (`xcodebuild test -scheme Force`) still has to run on a Mac.
+- Worker: `npm run typecheck` passes. The claim fix was run against `wrangler dev` with a local
+  D1. Of 20 concurrent first claims with different tokens, one got 204 and its payload is the one
+  stored. The same install publishing twice at once succeeds. The legacy `WRITE_TOKEN` row still
+  accepts that token and rejects others. On the old code all 20 got 204 and a loser's payload
+  was stored.
+- Swift: every file parses with Swift 6.4 on Linux. `CalculatorFormatter` was compiled and run
+  there: the new tests' assertions pass, output on an English device is unchanged, and the old
+  code on a `de_DE` formatter turns `12.5` into `12,5`, which parses back as `125`.
+- Not run: SwiftUI, UIKit, CoreMotion, Security and XCTest cannot build on Linux, so
+  `xcodebuild test -scheme Force` still has to run on a Mac. New tests:
+  `CalculatorFormatterTests`, `SettingsLimitsTests`, two in `PerfectPlusFlowTests`, and two in
+  `ConfigPublishingTests`.
