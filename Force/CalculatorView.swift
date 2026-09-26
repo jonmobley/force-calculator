@@ -3,6 +3,12 @@ import Foundation
 import ForceShared
 
 struct CalculatorView: View {
+    /// Called when the top-bar dismiss button is tapped. Set when the calculator
+    /// is the window's root and dismissing has to swap the root out instead of
+    /// popping a cover; left nil when presented as a full-screen cover, where the
+    /// environment `dismiss` handles it.
+    var onDismiss: (() -> Void)?
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -29,7 +35,8 @@ struct CalculatorView: View {
     /// clock button has been used to override them for this session.
     private var force: ForceValues { quickForce.values(settings: settings) }
     
-    init() {
+    init(onDismiss: (() -> Void)? = nil) {
+        self.onDismiss = onDismiss
         debugLog("🧮 CalculatorView: Initializing")
     }
     
@@ -46,7 +53,7 @@ struct CalculatorView: View {
                     showModeText: showModeText,
                     modeName: quickForce.modeName(settings: settings),
                     forcedNumber: force.number,
-                    onDismiss: { dismiss() },
+                    onDismiss: dismissCalculator,
                     onQuickEntry: toggleQuickEntry,
                     quickEntryStage: quickForce.stage,
                     onToggleMode: toggleMode,
@@ -90,6 +97,18 @@ struct CalculatorView: View {
             // The override is good for one sitting only, so closing the calculator hands
             // the trick back to the saved settings.
             quickForce.reset()
+        }
+    }
+
+    /// Prefers the caller-supplied dismiss when there is one, so the calculator can
+    /// tell the root switcher to swap back to settings. Falls back to the
+    /// environment dismiss when the view was presented as a full-screen cover and
+    /// there is no root to swap.
+    private func dismissCalculator() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
         }
     }
 

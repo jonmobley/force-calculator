@@ -14,7 +14,6 @@ struct ContentView: View {
     @State private var backgroundImage: UIImage?
     @State private var showingCalculator = false
     @State private var showingPeekStage = false
-    @State private var didApplyLaunchChoice = false
 
     private var themeColor: Color { settings.buttonTheme.color }
 
@@ -168,19 +167,8 @@ struct ContentView: View {
 
     private func appear() {
         forceNumberText = String(settings.forceNumber)
-        applyLaunchChoiceOnce()
         updatePeekReader()
         Task { await loadBackgroundImageAsync() }
-    }
-
-    /// Opening the calculator at launch has to happen once. Later appearances,
-    /// such as dismissing the big peek display, must not open it again.
-    private func applyLaunchChoiceOnce() {
-        guard !didApplyLaunchChoice else { return }
-        didApplyLaunchChoice = true
-        if settings.openToCalculator {
-            showingCalculator = true
-        }
     }
 
     /// Polls while the app is open and live peek is on. Opening the calculator or
