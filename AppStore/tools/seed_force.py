@@ -32,11 +32,20 @@ settings = {
     "livePeekEnabled": len(sys.argv) > 3 and sys.argv[3] == "peek",
 }
 
-container = subprocess.run(
-    ["xcrun", "simctl", "get_app_container", UDID, APP, GROUP],
-    check=True, capture_output=True, text=True,
-).stdout.strip()
-domain = f"{container}/Library/Preferences/{GROUP}"
+def container(kind):
+    found = subprocess.run(
+        ["xcrun", "simctl", "get_app_container", UDID, APP, kind],
+        capture_output=True, text=True,
+    )
+    return found.stdout.strip() if found.returncode == 0 else None
+
+
+# A build signed without the team, as on CI, has no registered App Group, and the suite
+# then lives in the app's own data container.
+root = container(GROUP) or container("data")
+if root is None:
+    sys.exit(f"{APP} is not installed on {UDID}")
+domain = f"{root}/Library/Preferences/{GROUP}"
 
 payload = json.dumps(settings).encode()
 subprocess.run(
@@ -44,4 +53,5 @@ subprocess.run(
      "-data", payload.hex()],
     check=True,
 )
+print(f"seeded {domain}")
 print(f"seeded forceNumber={settings['forceNumber']} livePeek={settings['livePeekEnabled']}")
