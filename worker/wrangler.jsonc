@@ -30,6 +30,16 @@
         "limit": 100,
         "period": 10
       }
+    },
+    // Caps config writes per client IP so one machine cannot claim ids in bulk. An
+    // install publishes once per settings change, so thirty a minute is generous.
+    {
+      "name": "CONFIG_WRITE_LIMIT",
+      "namespace_id": "9002",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
     }
   ],
   // D1 rather than KV: KV reads can serve up to 60s stale from edge cache, and a

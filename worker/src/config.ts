@@ -53,6 +53,14 @@ export async function writeConfig(
   env: ConfigEnv,
   id: string,
 ): Promise<Response> {
+  // Keyed on the caller rather than the id, and checked before auth, so one client
+  // cannot squat ids in bulk: unclaimed ids have no owner to key on yet.
+  const client = request.headers.get("cf-connecting-ip") ?? "unknown";
+  const { success } = await env.CONFIG_WRITE_LIMIT.limit({ key: client });
+  if (!success) {
+    return problem(429, "Too many configuration writes");
+  }
+
   const presented = bearerToken(request);
   if (presented === null) {
     return problem(401, "Unauthorized");
