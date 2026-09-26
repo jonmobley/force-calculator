@@ -42,8 +42,9 @@ it or read its peeks.
 Before this, every install shared the id `default` behind one service-wide token, so
 a second performer changing their force number overwrote the first performer's, and
 live peek returned whichever spectator had typed most recently regardless of who was
-watching. Rows written back then have a `NULL` hash and stay on `WRITE_TOKEN`, so the
-install that owns `default` is not locked out by the upgrade.
+watching. Rows written back then have a `NULL` hash and accept `WRITE_TOKEN`, so the
+install that owns `default` is not locked out by the upgrade. Its next publish binds the
+row to the hash of that token, after which the row no longer depends on the secret.
 
 ## Retention
 
@@ -81,7 +82,7 @@ intermediary can serve an old force number.
 
 Writes are gated on the token bound to the id being written, which lives only in
 the performer's device Keychain and is stored here as a hash. `WRITE_TOKEN` remains
-only to serve the pre-existing `default` row. Both comparisons hash the presented
+only for legacy rows that have not published since the hash was introduced. Both comparisons hash the presented
 token and compare the digests in constant time, so neither the stored hash nor the
 length of `WRITE_TOKEN` can be probed through timing.
 
@@ -109,7 +110,11 @@ npm run deploy
 # Local D1 for `wrangler dev`
 npm run migrate:local
 
-# Rotate the legacy service-wide token, which now only covers the `default` row
+# Rotate the legacy service-wide token. First confirm every legacy row has published
+# since this deploy and is bound (this should print 0); an unbound row switches to
+# the new secret, which the install holding the old one does not have.
+npx wrangler d1 execute force-config --remote \
+  --command "SELECT COUNT(*) FROM config WHERE token_hash IS NULL AND erased_at IS NULL"
 npx wrangler secret put WRITE_TOKEN
 
 # Validate, typecheck and test
