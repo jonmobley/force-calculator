@@ -7,16 +7,29 @@
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 	<!-- The performer's own trick settings are published so a QR code or NFC sticker
-	     already in circulation keeps working after they change the force number, and
-	     Live Peek reads back the number a spectator typed. Both are tied to a random
-	     identifier generated on the device, not to a person. -->
+	     already in circulation keeps working after they change the force number. They are
+	     stored under a random
+	     identifier generated on the device, which is an account-level id for the service
+	     and is declared as User ID. Nothing links it to a name, email, or device. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<dict>
 			<key>NSPrivacyCollectedDataType</key>
+			<string>NSPrivacyCollectedDataTypeUserID</string>
+			<key>NSPrivacyCollectedDataTypeLinked</key>
+			<true/>
+			<key>NSPrivacyCollectedDataTypeTracking</key>
+			<false/>
+			<key>NSPrivacyCollectedDataTypePurposes</key>
+			<array>
+				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+			</array>
+		</dict>
+		<dict>
+			<key>NSPrivacyCollectedDataType</key>
 			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
 			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
+			<true/>
 			<key>NSPrivacyCollectedDataTypeTracking</key>
 			<false/>
 			<key>NSPrivacyCollectedDataTypePurposes</key>
@@ -31,8 +44,11 @@
 			<key>NSPrivacyAccessedAPIType</key>
 			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
 			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<!-- CA92.1 for the app's own defaults; 1C8F.1 for the App Group suite that
+			     holds the performer's settings. -->
 			<array>
 				<string>CA92.1</string>
+				<string>1C8F.1</string>
 			</array>
 		</dict>
 	</array>

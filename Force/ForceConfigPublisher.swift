@@ -30,12 +30,28 @@ final class ForceConfigPublisher: ObservableObject {
 
     @Published private(set) var state: State = .idle
 
-    private let upload: Upload
+    /// Whether the service has accepted this install's id at least once.
+    ///
+    /// The id goes on every QR code and NFC tag, and the service binds it to the first token
+    /// that writes it. Handed out before that first write lands, anyone who saw the code
+    /// could claim the id first and strand every tag printed with it. Remembered across
+    /// launches, so a performer who is offline later can still write tags.
+    @Published private(set) var hasClaimedIdentifier = false
 
-    init(upload: @escaping Upload = { settings, id, token in
-        try await ForceConfigService.publish(settings, id: id, token: token)
-    }) {
+    private let upload: Upload
+    private let claimStore: UserDefaults
+    private static let claimedIdentifierKey = "claimedPerformerID"
+
+    /// - Parameter claimStore: Where the claimed id is remembered. Tests pass their own
+    ///   suite so they never mark the performer's real id as claimed.
+    init(
+        upload: @escaping Upload = { settings, id, token in
+            try await ForceConfigService.publish(settings, id: id, token: token)
+        },
+        claimStore: UserDefaults = .standard
+    ) {
         self.upload = upload
+        self.claimStore = claimStore
     }
 
     private var settings: CalculatorSettings?
@@ -57,6 +73,8 @@ final class ForceConfigPublisher: ObservableObject {
     func start(observing settings: CalculatorSettings) {
         guard changes == nil else { return }
         self.settings = settings
+        let claimed = claimStore.string(forKey: Self.claimedIdentifierKey)
+        hasClaimedIdentifier = claimed == PerformerCredentials.identifier
 
         changes = settings.objectWillChange
             // `objectWillChange` fires before the property is assigned, so the
@@ -84,6 +102,7 @@ final class ForceConfigPublisher: ObservableObject {
                 try await upload(snapshot, credentials.identifier, credentials.writeToken)
                 guard !Task.isCancelled else { return }
                 self?.state = .synced(Date())
+                self?.rememberClaim(of: credentials.identifier)
                 self?.stopRetrying()
                 debugLog("☁️ Published settings: forceNumber=\(snapshot.forceNumber)")
             } catch {
@@ -93,6 +112,11 @@ final class ForceConfigPublisher: ObservableObject {
                 debugLog("❌ Publish failed: \(error)")
             }
         }
+    }
+
+    private func rememberClaim(of identifier: String) {
+        claimStore.set(identifier, forKey: Self.claimedIdentifierKey)
+        hasClaimedIdentifier = true
     }
 
     // MARK: - Retry

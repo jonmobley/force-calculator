@@ -103,6 +103,8 @@ final class ClipSession: ObservableObject {
     /// change made during this session.
     func watchPeek(_ settings: CalculatorSettings) {
         peekWatch?.cancel()
+        // Polling exists only to notice the performer turning peek on mid-session.
+        guard CalculatorSettings.livePeekAvailable else { return }
         peekWatch = Task { [weak self] in
             await self?.refreshPeekUntilCancelled(into: settings)
         }

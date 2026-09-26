@@ -2,8 +2,10 @@ import SwiftUI
 import CoreNFC
 import ForceShared
 
+/// The QR code and NFC sticker writer that hand out the App Clip link.
 struct QRCodeNFCView: View {
     @EnvironmentObject var settings: CalculatorSettings
+    @EnvironmentObject private var configPublisher: ForceConfigPublisher
     @State private var qrCodeImage: UIImage?
     @State private var nfcWriter: NFCWriter?
     @State private var showingAlert = false
@@ -26,58 +28,45 @@ struct QRCodeNFCView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // QR Code Section
-                QRCodeSection(
-                    qrCodeImage: qrCodeImage,
-                    tint: settings.buttonTheme.color,
-                    downloadAction: downloadQRCode
-                )
-                
-                // NFC Section
-                NFCSection(
-                    isNFCAvailable: isNFCAvailable,
-                    writeAction: writeToNFC
-                )
-                
-                // Instructions
+                if configPublisher.hasClaimedIdentifier {
+                    QRCodeSection(
+                        qrCodeImage: qrCodeImage,
+                        tint: settings.buttonTheme.color,
+                        downloadAction: downloadQRCode
+                    )
+                    NFCSection(
+                        isNFCAvailable: isNFCAvailable,
+                        writeAction: writeToNFC
+                    )
+                } else {
+                    ClaimPendingSection(state: configPublisher.state)
+                }
                 InstructionsSection()
             }
             .padding()
         }
         .navigationTitle("QR Code & NFC")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            guard !hasLoaded else { 
-                debugLog("📡 QRCodeNFCView: Already loaded, skipping")
-                return 
-            }
-            hasLoaded = true
-            
-            debugLog("📡 QRCodeNFCView: onAppear - Starting background tasks")
-            
-            // Check NFC availability asynchronously with delay
-            Task {
-                try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 second delay
-                debugLog("📡 Checking NFC availability...")
-                isNFCAvailable = NFCNDEFReaderSession.readingAvailable
-                debugLog("📡 NFC available: \(isNFCAvailable)")
-            }
-            
-            // Generate QR code asynchronously with slight delay
-            Task {
-                debugLog("📡 Generating QR code in background...")
-                if let image = await QRCodeGenerator.generateQRCodeAsync(from: appClipURL) {
-                    qrCodeImage = image
-                }
-                debugLog("📡 QR code generation complete")
-            }
-            
-            debugLog("📡 QRCodeNFCView: onAppear completed immediately (work happening in background)")
+        .onAppear(perform: checkNFCOnce)
+        // The link is only built once the service has bound the id to this install.
+        .task(id: configPublisher.hasClaimedIdentifier) {
+            guard configPublisher.hasClaimedIdentifier, qrCodeImage == nil else { return }
+            qrCodeImage = await QRCodeGenerator.generateQRCodeAsync(from: appClipURL)
         }
         .alert("NFC Status", isPresented: $showingAlert) {
             Button("OK") { }
         } message: {
             Text(alertMessage)
+        }
+    }
+
+    private func checkNFCOnce() {
+        guard !hasLoaded else { return }
+        hasLoaded = true
+        Task {
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            isNFCAvailable = NFCNDEFReaderSession.readingAvailable
+            debugLog("📡 NFC available: \(isNFCAvailable)")
         }
     }
     
@@ -97,7 +86,7 @@ struct QRCodeNFCView: View {
     }
     
     private func writeToNFC() {
-        guard nfcWriter == nil else { return }
+        guard nfcWriter == nil, configPublisher.hasClaimedIdentifier else { return }
         let writer = NFCWriter(url: appClipURL) { outcome in
             nfcWriter = nil
             // The system NFC sheet already confirms success and cancellation.
@@ -164,6 +153,39 @@ struct QRCodeSection: View {
             }
             .disabled(qrCodeImage == nil)
         }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(16)
+    }
+}
+
+// MARK: - Claim Pending Section
+
+/// Stands in for the QR code and NFC writer until the service has accepted this install's id.
+struct ClaimPendingSection: View {
+    let state: ForceConfigPublisher.State
+
+    var body: some View {
+        VStack(spacing: 12) {
+            if case .outOfDate(let reason) = state {
+                Image(systemName: "exclamationmark.icloud")
+                    .font(.largeTitle)
+                    .foregroundColor(.orange)
+                Text("Can't set up your link yet")
+                    .font(.headline)
+                Text("\(reason). Your QR code and NFC sticker appear once Force can reach "
+                     + "its server. It retries automatically.")
+            } else {
+                ProgressView()
+                Text("Setting up your link...")
+                    .font(.headline)
+                Text("Your QR code and NFC sticker appear once your settings are saved online.")
+            }
+        }
+        .font(.subheadline)
+        .foregroundColor(.secondary)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
         .padding()
         .background(Color(.systemGray6))
         .cornerRadius(16)
@@ -253,4 +275,5 @@ struct InstructionsSection: View {
         QRCodeNFCView()
     }
     .environmentObject(CalculatorSettings())
+    .environmentObject(ForceConfigPublisher())
 }

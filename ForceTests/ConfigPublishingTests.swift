@@ -9,7 +9,13 @@ final class ConfigPublishingTests: XCTestCase {
     /// so they must not touch the performer's real service.
     private let service = "com.mobleypro.mobley.Force.tests.\(UUID().uuidString)"
 
+    /// Private defaults suite, so a successful test publish never marks the performer's
+    /// real id as claimed.
+    private let claimSuite = "com.mobleypro.mobley.Force.tests.claim.\(UUID().uuidString)"
+    private var claimStore: UserDefaults { UserDefaults(suiteName: claimSuite)! }
+
     override func tearDown() {
+        claimStore.removePersistentDomain(forName: claimSuite)
         ConfigTokenStore.delete(service: service)
         ConfigTokenStore.delete(account: ConfigTokenStore.performerAccount, service: service)
         PerformerCredentials.forgetCache(service: service)
@@ -41,12 +47,49 @@ final class ConfigPublishingTests: XCTestCase {
     /// Publishing needs no setup from the performer, so the very first launch has to
     /// reach the service on its own rather than waiting for a token to be pasted in.
     func testPublisherStartsPublishingWithNoSetup() {
-        let publisher = ForceConfigPublisher { _, _, _ in }
+        let publisher = ForceConfigPublisher(upload: { _, _, _ in }, claimStore: claimStore)
         publisher.start(observing: CalculatorSettings())
 
         // The upload is asynchronous; what matters here is that it was attempted
         // at launch rather than waiting for the first edit.
         XCTAssertEqual(publisher.state, .publishing)
+    }
+
+    /// The id is only safe to put on a QR code once the service has bound it to this
+    /// install. Before that, whoever saw the code could claim it first.
+    func testIDIsHandedOutOnlyOnceTheServiceAcceptsIt() async {
+        let publisher = ForceConfigPublisher(upload: { _, _, _ in }, claimStore: claimStore)
+        publisher.start(observing: CalculatorSettings())
+        XCTAssertFalse(publisher.hasClaimedIdentifier, "The first upload is still in flight")
+
+        await waitUntil { publisher.hasClaimedIdentifier }
+
+        // Remembered, so a performer who is offline at the next launch can still write tags.
+        let offline = ForceConfigPublisher(
+            upload: { _, _, _ in throw URLError(.notConnectedToInternet) },
+            claimStore: claimStore
+        )
+        offline.start(observing: CalculatorSettings())
+        XCTAssertTrue(offline.hasClaimedIdentifier)
+    }
+
+    func testARejectedUploadNeverHandsTheIDOut() async {
+        let publisher = ForceConfigPublisher(
+            upload: { _, _, _ in throw ForceConfigService.ServiceError.unauthorized },
+            claimStore: claimStore
+        )
+        publisher.start(observing: CalculatorSettings())
+        await waitUntil { publisher.state != .publishing }
+        XCTAssertFalse(publisher.hasClaimedIdentifier)
+    }
+
+    private func waitUntil(_ condition: () -> Bool) async {
+        var attempts = 0
+        while !condition(), attempts < 200 {
+            try? await Task.sleep(nanoseconds: 10_000_000)
+            attempts += 1
+        }
+        XCTAssertTrue(condition())
     }
 
     /// Credentials are generated once and then reused, so the id printed on a QR code

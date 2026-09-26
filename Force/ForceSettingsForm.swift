@@ -90,7 +90,7 @@ struct ForceTrickSection: View {
     private var activationPicker: some View {
         VStack(alignment: .leading, spacing: 4) {
             Picker("Activation Count", selection: $settings.activationCount) {
-                ForEach(1...10, id: \.self) { count in
+                ForEach(CalculatorSettings.activationCountRange, id: \.self) { count in
                     Text(count == 1 ? "1 (Immediate Force)" : "\(count) calculations").tag(count)
                 }
             }

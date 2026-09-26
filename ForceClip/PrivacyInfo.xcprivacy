@@ -6,24 +6,11 @@
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-	<!-- Live Peek, which the performer must switch on, sends the number the spectator
-	     has typed so the performer can read it on their own phone. A short numeric
-	     string, overwritten on every send, tied to no person and no device. -->
+	<!-- The clip only reads the performer's published settings. Live Peek, which would
+	     send what the spectator types, is not in this release
+	     (CalculatorSettings.livePeekAvailable), so nothing is collected. -->
 	<key>NSPrivacyCollectedDataTypes</key>
-	<array>
-		<dict>
-			<key>NSPrivacyCollectedDataType</key>
-			<string>NSPrivacyCollectedDataTypeOtherUserContent</string>
-			<key>NSPrivacyCollectedDataTypeLinked</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypeTracking</key>
-			<false/>
-			<key>NSPrivacyCollectedDataTypePurposes</key>
-			<array>
-				<string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-			</array>
-		</dict>
-	</array>
+	<array/>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<dict>

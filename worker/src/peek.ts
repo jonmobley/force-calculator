@@ -104,7 +104,7 @@ export async function clearPeek(
     // Leftover rows from the old single-value table; nothing writes it anymore.
     env.DB.prepare("DELETE FROM peek WHERE id = ?").bind(id),
   ]);
-  return new Response(null, { status: 204, headers: corsHeaders() });
+  return new Response(null, { status: 204 });
 }
 
 /**
@@ -181,7 +181,7 @@ export async function writePeek(
     ).bind(id, id, MAX_ENTRIES),
   ]);
 
-  return new Response(null, { status: 204, headers: corsHeaders() });
+  return new Response(null, { status: 204 });
 }
 
 /**
@@ -283,13 +283,15 @@ export async function authorize(
   if (!row) {
     return "claim";
   }
+  const presentedHash = await sha256Hex(presented);
   if (row.token_hash) {
-    return constantTimeEqual(await sha256Hex(presented), row.token_hash)
-      ? "matched"
-      : "denied";
+    return constantTimeEqual(presentedHash, row.token_hash) ? "matched" : "denied";
   }
+  // Hashing both sides gives equal-length inputs, so the length check in
+  // `constantTimeEqual` cannot leak how long the service-wide token is.
   const legacy = env.WRITE_TOKEN ?? "";
-  return legacy.length > 0 && constantTimeEqual(presented, legacy)
+  return legacy.length > 0 &&
+    constantTimeEqual(presentedHash, await sha256Hex(legacy))
     ? "matched"
     : "denied";
 }
@@ -315,21 +317,12 @@ function constantTimeEqual(a: string, b: string): boolean {
 
 // MARK: - HTTP helpers
 
-export function corsHeaders(): Record<string, string> {
-  return {
-    "access-control-allow-origin": "*",
-    "access-control-allow-methods": "GET, PUT, DELETE, OPTIONS",
-    "access-control-allow-headers": "authorization, content-type",
-  };
-}
-
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
-      ...corsHeaders(),
     },
   });
 }
@@ -367,5 +360,6 @@ function isValidPeekValue(value: string): boolean {
   if (value.length === 0 || value.length > MAX_PEEK_VALUE_LENGTH) {
     return false;
   }
-  return DISPLAY_CHARS.test(value);
+  // Punctuation alone (`......`, `,-,`) is never on the display; infinity is.
+  return DISPLAY_CHARS.test(value) && /[0-9∞]/.test(value);
 }

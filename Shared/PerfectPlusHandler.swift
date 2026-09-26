@@ -178,6 +178,7 @@ public class PerfectPlusHandler: ObservableObject {
         state.previousNumber = savedNumber
         state.currentNumber = perfectAddend
         state.userIsTyping = false
+        state.operandStaged = true
         mode = phoneIsTurned ? .staged : .calculated
         debugLog("🎭 Perfect Plus: addend \(perfectAddend) for force \(forceNumber), now \(mode)")
     }

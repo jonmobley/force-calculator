@@ -40,7 +40,7 @@ Quick force entry. Tap the clock, type a number, press equals, then one digit. S
 
 Perfect Plus. Turn it on in settings, press plus, then turn the phone face down. The number that completes the total to the force appears while the screen is hidden. The keypad is inert face-down.
 
-Start with Screenshot and Live Peek are described below.
+Start with Screenshot is described below.
 
 START WITH SCREENSHOT
 
@@ -54,8 +54,9 @@ PRIVACY
 
 One service: force-config.jonmobley.workers.dev (also forcemagic.app). It sends only:
 
-- The performer's settings, so a QR code or NFC sticker still works after the force number changes. No personal data.
-- Live Peek, off by default. When on, the App Clip sends the calculation so the performer can read it. Short numeric text, kept briefly, then it expires. The performer can clear it. Not tied to a person or device.
+- The performer's settings, so a QR code or NFC sticker still works after the force number changes. No personal data. Erased after a year unused.
+
+The App Clip only reads those settings. It sends nothing about what the spectator types.
 
 No accounts, analytics, ads, or third-party SDKs. Each install creates a random id and token. Neither comes from the user or the hardware.
 

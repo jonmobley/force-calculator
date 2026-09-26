@@ -14,6 +14,7 @@
  *
  *   GET    /v1/config?id=<performer>  -> current settings, readable by the App Clip
  *   PUT    /v1/config?id=<performer>  -> replace settings, requires that id's token
+ *   DELETE /v1/config?id=<performer>  -> erase settings and peeks, requires that id's token
  *   PUT    /v1/peek?id=<performer>    -> report one number the spectator typed, no token
  *   GET    /v1/peek?id=<performer>    -> the calculation so far, requires that id's token
  *   DELETE /v1/peek?id=<performer>    -> clear it between spectators, requires the token
@@ -28,30 +29,29 @@
  * hash of its token, and nothing else may write or read peeks for that id afterwards.
  * Before this, every install shared the id `default` behind one service-wide token, so
  * performers overwrote each other's force numbers and could read each other's peeks.
+ *
+ * Settings the app has not published to in a year are erased by the cron, and the owner
+ * can erase them sooner. The id stays bound to its token either way, so a tag printed
+ * with it can never be claimed by someone else.
  */
 
+import { readConfig, writeConfig, type ConfigEnv } from "./config";
 import {
-  authorize,
-  bearerToken,
   clearPeek,
-  corsHeaders,
   json,
-  MAX_PAYLOAD_BYTES,
   problem,
   pruneExpiredPeeks,
-  readBoundedBody,
   readPeek,
-  sha256Hex,
   writePeek,
-  type PeekEnv,
 } from "./peek";
+import { eraseConfig, eraseUnusedConfigs } from "./retention";
 
 const DEFAULT_ID = "default";
 
 /** Ids are used directly as primary keys, so keep them boring. */
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-interface Env extends PeekEnv {}
+interface Env extends ConfigEnv {}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -82,10 +82,6 @@ export default {
       return problem(400, "Invalid id");
     }
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders() });
-    }
-
     if (url.pathname === "/v1/peek") {
       switch (request.method) {
         case "GET":
@@ -104,6 +100,8 @@ export default {
         return readConfig(env, id);
       case "PUT":
         return writeConfig(request, env, id);
+      case "DELETE":
+        return eraseConfig(request, env, id);
       default:
         return problem(405, "Method not allowed");
     }
@@ -115,81 +113,9 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<void> {
     await pruneExpiredPeeks(env);
+    await eraseUnusedConfigs(env);
   },
 } satisfies ExportedHandler<Env>;
-
-async function readConfig(env: Env, id: string): Promise<Response> {
-  const row = await env.DB.prepare(
-    "SELECT payload, updated_at FROM config WHERE id = ?",
-  )
-    .bind(id)
-    .first<{ payload: string; updated_at: number }>();
-
-  if (!row) {
-    return problem(404, "No configuration published yet");
-  }
-
-  // The clip must never act on a cached copy: the performer may have changed the
-  // force number seconds ago.
-  return new Response(row.payload, {
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      "x-updated-at": String(row.updated_at),
-      ...corsHeaders(),
-    },
-  });
-}
-
-async function writeConfig(
-  request: Request,
-  env: Env,
-  id: string,
-): Promise<Response> {
-  const presented = bearerToken(request);
-  if (presented === null) {
-    return problem(401, "Unauthorized");
-  }
-  const claim = await authorize(env, id, presented);
-  if (claim === "denied") {
-    return problem(401, "Unauthorized");
-  }
-
-  const bounded = await readBoundedBody(
-    request,
-    MAX_PAYLOAD_BYTES,
-    "Configuration too large",
-  );
-  if (!bounded.ok) {
-    return bounded.response;
-  }
-  const body = bounded.body;
-
-  // Store the document verbatim so the Worker needs no knowledge of the app's
-  // settings shape, but confirm it is JSON so a bad write cannot poison reads.
-  try {
-    JSON.parse(body);
-  } catch {
-    return problem(400, "Body must be JSON");
-  }
-
-  // The first write to an id binds it to the token that made it. Later writes keep
-  // whatever hash is already stored, so a legacy row on the service-wide token is not
-  // silently converted and locked away from the install that owns it.
-  const tokenHash = claim === "claim" ? await sha256Hex(presented) : null;
-
-  await env.DB.prepare(
-    `INSERT INTO config (id, payload, updated_at, token_hash) VALUES (?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
-       payload = excluded.payload,
-       updated_at = excluded.updated_at,
-       token_hash = COALESCE(config.token_hash, excluded.token_hash)`,
-  )
-    .bind(id, body, Date.now(), tokenHash)
-    .run();
-
-  return new Response(null, { status: 204, headers: corsHeaders() });
-}
 
 /** Brand landing for forcemagic.app — points reviewers and buyers to support. */
 function homePage(): Response {
@@ -236,7 +162,6 @@ function homePage(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
@@ -271,7 +196,7 @@ function privacyPolicy(): Response {
 </head>
 <body>
   <h1>Force Privacy Policy</h1>
-  <p class="meta">Last updated: September 23, 2026</p>
+  <p class="meta">Last updated: September 26, 2026</p>
 
   <p>
     Force is a calculator prop for magicians. It includes an optional App Clip that a
@@ -287,13 +212,6 @@ function privacyPolicy(): Response {
       options, the app may upload those settings to our configuration service so a printed
       QR code or NFC sticker keeps working after you edit them. Settings are numbers and
       toggles only.
-    </li>
-    <li>
-      <strong>Live Peek (optional, off by default).</strong> If you turn Live Peek on, the
-      App Clip sends the calculation a spectator types so you can read it on your own
-      phone during a performance. Entries are short numeric strings and operators. They are
-      kept briefly for the performance, then expire automatically, and you can clear them
-      at any time.
     </li>
     <li>
       <strong>Install identifiers.</strong> Each install generates a random performer id
@@ -312,23 +230,23 @@ function privacyPolicy(): Response {
 
   <h2>How data is used</h2>
   <p>
-    Settings and Live Peek exist only so the trick works across your phone and a
-    spectator’s App Clip. We do not sell data, use it for advertising, or combine it with
+    Settings exist only so the trick works across your phone and a spectator’s App Clip.
+    The App Clip reads them and sends nothing about what a spectator types. We do not sell data, use it for advertising, or combine it with
     other sources to identify a person.
   </p>
 
   <h2>Where data is stored</h2>
   <p>
-    Configuration and Live Peek are stored on a Cloudflare Worker and D1 database under
-    our control. Tokens never leave the performer’s Keychain except as a bearer
-    credential on publish and peek-read requests.
+    Settings are stored on a Cloudflare Worker and D1 database under our control. Tokens
+    never leave the performer’s Keychain except as a bearer credential when the app
+    publishes settings.
   </p>
 
   <h2>Retention</h2>
-  <ul>
-    <li>Settings remain until you overwrite them or we delete unused records.</li>
-    <li>Live Peek entries expire after about ten minutes and can be cleared sooner.</li>
-  </ul>
+  <p>
+    Settings remain until you overwrite them, and are erased after a year without the app
+    being opened.
+  </p>
 
   <h2>Children</h2>
   <p>Force is not directed at children under 13, and we do not knowingly collect data from them.</p>
@@ -346,7 +264,6 @@ function privacyPolicy(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
@@ -395,7 +312,6 @@ function supportPage(): Response {
   <h2>Common topics</h2>
   <ul>
     <li>App Clip QR code or NFC sticker not opening the spectator calculator</li>
-    <li>Live Peek not showing the spectator’s calculation</li>
     <li>Settings not updating for spectators after you change the force number</li>
     <li>Perfect Plus / face-down behavior</li>
   </ul>
@@ -414,7 +330,6 @@ function supportPage(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }

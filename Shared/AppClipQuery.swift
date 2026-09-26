@@ -112,13 +112,13 @@ public struct AppClipQuery: Equatable {
 
     private static func applyForceNumber(_ items: [URLQueryItem], to settings: CalculatorSettings) {
         if let raw = value("fn", in: items), let number = Int(raw) {
-            settings.forceNumber = number
+            settings.forceNumber = CalculatorSettings.clampedForceNumber(number)
         }
     }
 
     private static func applyActivationCount(_ items: [URLQueryItem], to settings: CalculatorSettings) {
         if let raw = value("ac", in: items), let count = Int(raw) {
-            settings.activationCount = count
+            settings.activationCount = CalculatorSettings.clampedActivationCount(count)
         }
     }
 
@@ -151,7 +151,7 @@ public struct AppClipQuery: Equatable {
             settings.startWithScreenshot = enabled
         }
         if let raw = value("pk", in: items), let enabled = Bool(raw) {
-            settings.livePeekEnabled = enabled
+            settings.livePeekEnabled = CalculatorSettings.livePeekAvailable && enabled
         }
     }
 }
