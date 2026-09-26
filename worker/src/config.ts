@@ -8,7 +8,6 @@
 import {
   authorize,
   bearerToken,
-  corsHeaders,
   MAX_PAYLOAD_BYTES,
   problem,
   readBoundedBody,
@@ -43,7 +42,6 @@ export async function readConfig(env: ConfigEnv, id: string): Promise<Response> 
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store",
       "x-updated-at": String(row.updated_at),
-      ...corsHeaders(),
     },
   });
 }
@@ -93,7 +91,7 @@ export async function writeConfig(
   if (!stored) {
     return problem(401, "Unauthorized");
   }
-  return new Response(null, { status: 204, headers: corsHeaders() });
+  return new Response(null, { status: 204 });
 }
 
 // MARK: - Storage

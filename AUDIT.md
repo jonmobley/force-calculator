@@ -121,15 +121,16 @@ remembered across launches, so an offline performer can still write tags later.
 | S3 | Anyone who knows an id can post peeks while Live Peek is on. The rate limit (100 per 10 s) is enough to flood the 40-entry tape. Options: a per-session nonce published with the config, or keep only the first session's entries. | `worker/src/peek.ts` ~120-185 | Backlog |
 | S4 | Rows with no `token_hash` still accept the shared `WRITE_TOKEN`, so pre-tenancy installs on `id=default` share one record. The next legacy write now binds the row to that token's hash (`COALESCE`, so only where none is set), and the README gives the check to run before rotating the secret. Installs that still share `default` keep sharing it until they move to their own id. | `worker/src/config.ts` `storeConfig` | **Fixed** (rotate after deploy) |
 | S5 | Config writes had no rate limit, so ids could be squatted in bulk. Now `CONFIG_WRITE_LIMIT`, 30 per 60 s per `cf-connecting-ip`, checked before the token so unclaimed ids are covered too; 429 when exceeded. | `worker/src/config.ts` `writeConfig`, `wrangler.jsonc` | **Fixed** |
-| S6 | Observability samples every request (`head_sampling_rate: 1`), so logs can keep `Authorization` headers. Lower it and redact. | `worker/wrangler.jsonc` ~14 | Backlog |
+| S6 | Observability sampled every request (`head_sampling_rate: 1`), so logs could keep `Authorization` headers. Invocation logs, which hold request metadata, are now off, and the Worker's own logs are sampled at 10%. It never logs a token, so stored logs hold almost nothing; `wrangler tail` is the live view. | `worker/wrangler.jsonc` `observability` | **Fixed** |
 | S7 | Config was never deleted although the privacy page said unused settings are. Now `DELETE /v1/config` for the owner, and the cron erases configs not published to in 365 days. Erasing sets the payload to `{}` and `erased_at`, deletes the id's peeks, and keeps `token_hash` so a printed id cannot be re-claimed; the owner's next publish revives it. The privacy page says settings are erased after a year without the app being opened. | `worker/src/retention.ts`, `migrations/0005_add_erased_at.sql` | **Fixed** |
 
 ### Low
 
 - The legacy plaintext comparison returned early on a length mismatch. Both sides are now
   hashed with `sha256Hex` before `constantTimeEqual`. `worker/src/peek.ts` `authorize`. **Fixed.**
-- `Access-Control-Allow-Origin: *` on API routes. The native clients don't need CORS. Backlog.
-- Peek values are only charset-checked (`......` passes). Backlog.
+- `Access-Control-Allow-Origin: *` on API routes. The native clients don't need CORS. Removed from every
+  response, and a preflight now gets 405. **Fixed.**
+- Peek values were only charset-checked (`......` passed). They now need a digit or `∞`. **Fixed.**
 - `GET /v1/config` is public, so anyone with the id can read the force number. Documented and
   inherent while the Clip has no secret.
 - The README API table was missing `DELETE /v1/peek`. **Fixed.**

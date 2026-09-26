@@ -11,9 +11,16 @@
     { "pattern": "www.forcemagic.app", "custom_domain": true }
   ],
   "preview_urls": false,
+  // Invocation logs keep each request's metadata, including headers, for seven days, and
+  // every request carries a bearer token. The Worker's own logs never print one, so keep
+  // those, sampled, and leave full request detail to a live `wrangler tail`.
   "observability": {
     "enabled": true,
-    "head_sampling_rate": 1
+    "logs": {
+      "enabled": true,
+      "invocation_logs": false,
+      "head_sampling_rate": 0.1
+    }
   },
   // Sweep peek rows past the ten-minute lifetime so expired entries leave D1 even
   // when nobody writes to that id again.

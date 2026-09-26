@@ -55,6 +55,9 @@ describe("peek gating", () => {
     expect((await report(id, { value: "-1e+10", entryID: "c" })).status).toBe(204);
     expect((await report(id, { value: "DROP", entryID: "d" })).status).toBe(400);
     expect((await report(id, { value: "", entryID: "e" })).status).toBe(400);
+    expect((await report(id, { value: "......", entryID: "e" })).status).toBe(400);
+    expect((await report(id, { value: ",-,", entryID: "e" })).status).toBe(400);
+    expect((await report(id, { value: "-∞", entryID: "h" })).status).toBe(204);
     expect((await report(id, { value: "1", entryID: "f", op: "+" })).status).toBe(204);
     expect((await report(id, { value: "1", entryID: "g", op: "plus" })).status).toBe(400);
     expect((await report(id, { value: "1", entryID: "bad id!" })).status).toBe(400);

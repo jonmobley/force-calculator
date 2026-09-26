@@ -38,7 +38,6 @@
 import { readConfig, writeConfig, type ConfigEnv } from "./config";
 import {
   clearPeek,
-  corsHeaders,
   json,
   problem,
   pruneExpiredPeeks,
@@ -81,10 +80,6 @@ export default {
     const id = url.searchParams.get("id") ?? DEFAULT_ID;
     if (!ID_PATTERN.test(id)) {
       return problem(400, "Invalid id");
-    }
-
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders() });
     }
 
     if (url.pathname === "/v1/peek") {
@@ -167,7 +162,6 @@ function homePage(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
@@ -278,7 +272,6 @@ function privacyPolicy(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
@@ -346,7 +339,6 @@ function supportPage(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
