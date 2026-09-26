@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Seed the Force app-group settings so screenshots show a configured app.
+"""Launch Force on a simulator with presentable settings for screenshots.
 
-Written through `defaults` inside the simulator rather than straight into the plist:
-cfprefsd owns that file and caches it, and a direct write gets silently clobbered the
-next time the app saves. The domain is the plist inside the App Group container, named by
-path: `defaults write <group id>` from `simctl spawn` writes a domain of that name in the
-simulator's home instead, which the app never reads. The app must have been launched once
-so the container exists.
+    seed_force.py <udid> [force number] [peek]
+
+The settings go in as a launch argument (`-calculatorSettings <data>`) rather than a
+write to the preferences file. Arguments are the first domain every `UserDefaults`
+consults, the App Group suite included, so the app reads them however it was signed.
+A file write depends on where the suite lives, which differs between a team-signed build
+(the App Group container) and an ad hoc one such as CI's, and on cfprefsd not holding a
+stale copy. Nothing is persisted: relaunching without the argument restores the app's own
+settings.
 """
 import json
 import subprocess
@@ -14,7 +17,6 @@ import sys
 
 UDID = sys.argv[1]
 APP = "com.mobleypro.mobley.Force"
-GROUP = "group.com.mobleypro.mobley.Force"
 KEY = "calculatorSettings"
 
 settings = {
@@ -32,26 +34,10 @@ settings = {
     "livePeekEnabled": len(sys.argv) > 3 and sys.argv[3] == "peek",
 }
 
-def container(kind):
-    found = subprocess.run(
-        ["xcrun", "simctl", "get_app_container", UDID, APP, kind],
-        capture_output=True, text=True,
-    )
-    return found.stdout.strip() if found.returncode == 0 else None
-
-
-# A build signed without the team, as on CI, has no registered App Group, and the suite
-# then lives in the app's own data container.
-root = container(GROUP) or container("data")
-if root is None:
-    sys.exit(f"{APP} is not installed on {UDID}")
-domain = f"{root}/Library/Preferences/{GROUP}"
-
 payload = json.dumps(settings).encode()
+subprocess.run(["xcrun", "simctl", "terminate", UDID, APP], capture_output=True)
 subprocess.run(
-    ["xcrun", "simctl", "spawn", UDID, "defaults", "write", domain, KEY,
-     "-data", payload.hex()],
+    ["xcrun", "simctl", "launch", UDID, APP, f"-{KEY}", f"<{payload.hex()}>"],
     check=True,
 )
-print(f"seeded {domain}")
-print(f"seeded forceNumber={settings['forceNumber']} livePeek={settings['livePeekEnabled']}")
+print(f"launched with forceNumber={settings['forceNumber']} livePeek={settings['livePeekEnabled']}")
