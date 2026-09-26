@@ -43,6 +43,7 @@ import {
   readPeek,
   sha256Hex,
   writePeek,
+  type Claim,
   type PeekEnv,
 } from "./peek";
 
@@ -173,22 +174,61 @@ async function writeConfig(
     return problem(400, "Body must be JSON");
   }
 
-  // The first write to an id binds it to the token that made it. Later writes keep
-  // whatever hash is already stored, so a legacy row on the service-wide token is not
-  // silently converted and locked away from the install that owns it.
-  const tokenHash = claim === "claim" ? await sha256Hex(presented) : null;
-
-  await env.DB.prepare(
-    `INSERT INTO config (id, payload, updated_at, token_hash) VALUES (?, ?, ?, ?)
-     ON CONFLICT(id) DO UPDATE SET
-       payload = excluded.payload,
-       updated_at = excluded.updated_at,
-       token_hash = COALESCE(config.token_hash, excluded.token_hash)`,
-  )
-    .bind(id, body, Date.now(), tokenHash)
-    .run();
-
+  const stored = await storeConfig(env, id, body, presented, claim);
+  if (!stored) {
+    return problem(401, "Unauthorized");
+  }
   return new Response(null, { status: 204, headers: corsHeaders() });
+}
+
+/**
+ * Writes the payload, re-checking ownership in the same statement that writes it.
+ *
+ * `authorize` reads before the write, so two first writers could both be told `claim`.
+ * An upsert let the loser of that race overwrite the winner's payload, and let whoever
+ * landed first take the id from the install that printed it on a tag. A claim is now an
+ * insert that does nothing if the id exists, and every other write is an update that only
+ * matches the right owner. A claim that loses the race is authorized again, so the same
+ * install publishing twice at once still lands.
+ */
+async function storeConfig(
+  env: Env,
+  id: string,
+  body: string,
+  presented: string,
+  claim: Exclude<Claim, "denied">,
+): Promise<boolean> {
+  const tokenHash = await sha256Hex(presented);
+  const now = Date.now();
+  let access: Claim = claim;
+
+  if (access === "claim") {
+    const inserted = await env.DB.prepare(
+      `INSERT INTO config (id, payload, updated_at, token_hash) VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO NOTHING`,
+    )
+      .bind(id, body, now, tokenHash)
+      .run();
+    if (inserted.meta.changes > 0) {
+      return true;
+    }
+    access = await authorize(env, id, presented);
+  }
+  if (access !== "matched") {
+    return false;
+  }
+
+  // `matched` means the row carries this token's hash, or carries none and the request
+  // presented the service-wide token. No write ever sets a hash on an existing row, so
+  // neither can change between the check and this statement. A legacy row keeps its
+  // NULL hash rather than being locked away from the install that owns it.
+  const updated = await env.DB.prepare(
+    `UPDATE config SET payload = ?, updated_at = ?
+     WHERE id = ? AND (token_hash = ? OR token_hash IS NULL)`,
+  )
+    .bind(body, now, id, tokenHash)
+    .run();
+  return updated.meta.changes > 0;
 }
 
 /** Brand landing for forcemagic.app — points reviewers and buyers to support. */

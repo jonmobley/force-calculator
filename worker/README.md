@@ -21,6 +21,7 @@ once stays correct forever.
 | `PUT`  | `/v1/config` | that id's token   | Replace settings, called by app     |
 | `PUT`  | `/v1/peek`   | none              | Report the spectator's number       |
 | `GET`  | `/v1/peek`   | that id's token   | Latest reported number, read by app |
+| `DELETE` | `/v1/peek` | that id's token   | Clear it between spectators         |
 | `GET`  | `/health`    | none              | Liveness probe                      |
 
 Every route takes `?id=<performer>`, naming whose record to act on.
