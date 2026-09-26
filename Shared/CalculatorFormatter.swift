@@ -62,11 +62,23 @@ public struct CalculatorFormatter {
         return (isNegative ? "-" : "") + formatted
     }
 
-    private static func grouped(_ result: Double) -> String {
+    /// A formatter that writes `.` and `,` whatever the device locale.
+    ///
+    /// `parseDisplay` and the typing path only understand those two. Left on the current
+    /// locale, `12.5` came out as `12,5` on a comma-decimal phone and read back as `125`.
+    private static func posixFormatter(_ style: NumberFormatter.Style) -> NumberFormatter {
         let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US")
+        formatter.numberStyle = style
+        formatter.decimalSeparator = "."
         formatter.groupingSeparator = ","
-        formatter.usesGroupingSeparator = true
+        formatter.groupingSize = 3
+        formatter.usesGroupingSeparator = style == .decimal
+        return formatter
+    }
+
+    private static func grouped(_ result: Double) -> String {
+        let formatter = posixFormatter(.decimal)
         if result.truncatingRemainder(dividingBy: 1) == 0 {
             formatter.maximumFractionDigits = 0
             return formatter.string(from: NSNumber(value: result)) ?? String(format: "%.0f", result)
@@ -78,18 +90,14 @@ public struct CalculatorFormatter {
     }
 
     private static func scientific(_ result: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .scientific
+        let formatter = posixFormatter(.scientific)
         formatter.exponentSymbol = "e"
         formatter.maximumFractionDigits = 3
         return formatter.string(from: NSNumber(value: result)) ?? String(result)
     }
 
     private static let integerFormatter: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.groupingSeparator = ","
-        formatter.usesGroupingSeparator = true
+        let formatter = posixFormatter(.decimal)
         formatter.maximumFractionDigits = 0
         return formatter
     }()
