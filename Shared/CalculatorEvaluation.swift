@@ -12,7 +12,7 @@ extension CalculatorOperations {
     ) -> Bool {
         !perfectPlusMode.keysAreInert
             && state.operation != nil
-            && (state.userIsTyping || state.percentReady)
+            && (state.userIsTyping || state.operandStaged)
     }
 
     public static func performOperation(
@@ -29,7 +29,7 @@ extension CalculatorOperations {
             perfectPlusHandler.reset()
             return
         }
-        state.percentReady = false
+        state.operandStaged = false
         state.previousNumber = CalculatorFormatter.parseDisplay(state.display)
         state.operation = op
         state.userIsTyping = false
@@ -54,7 +54,7 @@ extension CalculatorOperations {
         }
         // The addition is finishing, so a turn of the phone afterwards must not arm anything.
         perfectPlusHandler.reset()
-        state.percentReady = false
+        state.operandStaged = false
         guard let currentOp = state.operation ?? state.lastOperation else { return }
         if currentOp == .percent { return }
         assignOperands(&state)
@@ -89,7 +89,7 @@ extension CalculatorOperations {
         // Cleared so the next bare equals repeats the last operand instead of
         // using the result as both sides. The repeat itself lives in lastOperation.
         state.operation = nil
-        state.percentReady = false
+        state.operandStaged = false
         state.userIsTyping = false
     }
 
@@ -105,14 +105,14 @@ extension CalculatorOperations {
         switch state.operation {
         case .add, .subtract:
             staged = state.previousNumber * typed / 100
-            state.percentReady = true
+            state.operandStaged = true
         case .multiply, .divide:
             staged = typed / 100
-            state.percentReady = true
+            state.operandStaged = true
         case nil, .percent:
             staged = typed / 100
             state.operation = nil
-            state.percentReady = false
+            state.operandStaged = false
             state.previousNumber = staged
         }
         state.display = CalculatorFormatter.formatResult(staged)

@@ -77,6 +77,30 @@ final class PerfectPlusFlowTests: XCTestCase {
         XCTAssertEqual(calculator.display, formatted(forceNumber))
     }
 
+    /// Both calculators draw `expressionDisplay`, so the number has to reach it, not just
+    /// `display`. Without it the readout sat on `100+` while the phone came back.
+    func testStagedNumberShowsInTheReadout() {
+        let calculator = TestCalculator(forceNumber: forceNumber, activationCount: 3)
+        calculator.stageTheNumberBehindTheTurn(savedNumber: 100)
+        XCTAssertEqual(calculator.expressionDisplay, "100+\(formatted(forceNumber - 100))")
+
+        calculator.turnPhoneBack()
+        XCTAssertEqual(calculator.expressionDisplay, "100+\(formatted(forceNumber - 100))")
+        calculator.equals()
+        XCTAssertEqual(calculator.expressionDisplay, formatted(forceNumber))
+    }
+
+    /// An operator after the number finishes the sum first, as it would on any calculator,
+    /// rather than dropping the number the plus was pressed on.
+    func testOperatorAfterTheNumberFinishesTheSum() {
+        let calculator = TestCalculator(forceNumber: forceNumber, activationCount: 3)
+        calculator.type("100")
+        calculator.press(.add)
+        calculator.turnPhoneOverAndBack()
+        calculator.press(.multiply)
+        XCTAssertEqual(calculator.expressionDisplay, "\(formatted(forceNumber))×")
+    }
+
     private func formatted(_ value: Int) -> String {
         CalculatorFormatter.formatResult(Double(value))
     }

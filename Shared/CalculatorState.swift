@@ -21,9 +21,10 @@ public struct CalculatorState {
     /// True while the display holds digits being typed rather than a result.
     public var userIsTyping = false
 
-    /// True after percent has filled the second operand. The next digit replaces it;
-    /// the next operator or equals finishes the sum it belongs to.
-    public var percentReady = false
+    /// True after percent or Perfect Plus has filled the second operand. The readout shows
+    /// it after the pending operator; the next digit replaces it; the next operator or
+    /// equals finishes the sum it belongs to.
+    public var operandStaged = false
 
     /// Equals presses so far, counting toward the activation count.
     public var forceCount = 0
@@ -44,7 +45,7 @@ public struct CalculatorState {
         guard let op = operation, op != .percent else { return display }
         let left = CalculatorFormatter.formatResult(previousNumber)
         let symbol = op.peekSymbol
-        if userIsTyping || percentReady {
+        if userIsTyping || operandStaged {
             return "\(left)\(symbol)\(display)"
         }
         return "\(left)\(symbol)"

@@ -45,8 +45,8 @@ public struct CalculatorOperations {
         perfectPlusMode: PerfectPlusState
     ) {
         if perfectPlusMode.keysAreInert { return }
-        if state.percentReady {
-            state.percentReady = false
+        if state.operandStaged {
+            state.operandStaged = false
             state.userIsTyping = false
         }
         let digitCount = state.display.filter { $0.isNumber }.count
@@ -64,8 +64,8 @@ public struct CalculatorOperations {
         perfectPlusMode: PerfectPlusState
     ) {
         if perfectPlusMode.keysAreInert || state.display.contains(".") { return }
-        if state.percentReady {
-            state.percentReady = false
+        if state.operandStaged {
+            state.operandStaged = false
             state.userIsTyping = false
         }
         if state.userIsTyping {
@@ -84,14 +84,14 @@ public struct CalculatorOperations {
         // A pending operator with no second operand yet (`10+`): erase the operator
         // and leave the left-hand number. Typing digits of the right side falls through
         // to ordinary digit deletion below.
-        if state.operation != nil, !state.userIsTyping, !state.percentReady {
+        if state.operation != nil, !state.userIsTyping, !state.operandStaged {
             state.operation = nil
             state.display = CalculatorFormatter.formatResult(state.previousNumber)
             state.previousNumber = 0
             return
         }
-        if state.percentReady {
-            state.percentReady = false
+        if state.operandStaged {
+            state.operandStaged = false
             state.userIsTyping = true
         }
         let cleaned = state.display.replacingOccurrences(of: ",", with: "")
@@ -126,7 +126,7 @@ public struct CalculatorOperations {
         if perfectPlusMode.keysAreInert { return }
         state.display = "0"
         state.userIsTyping = false
-        state.percentReady = false
+        state.operandStaged = false
     }
 
     /// Clears the whole session, including the force count and any pending trick.
