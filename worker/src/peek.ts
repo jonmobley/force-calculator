@@ -104,7 +104,7 @@ export async function clearPeek(
     // Leftover rows from the old single-value table; nothing writes it anymore.
     env.DB.prepare("DELETE FROM peek WHERE id = ?").bind(id),
   ]);
-  return new Response(null, { status: 204, headers: corsHeaders() });
+  return new Response(null, { status: 204 });
 }
 
 /**

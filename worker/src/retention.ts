@@ -10,7 +10,6 @@
 import {
   authorize,
   bearerToken,
-  corsHeaders,
   problem,
   type PeekEnv,
 } from "./peek";
@@ -34,7 +33,7 @@ export async function eraseConfig(
     return problem(401, "Unauthorized");
   }
   await env.DB.batch(eraseStatements(env, id, Date.now()));
-  return new Response(null, { status: 204, headers: corsHeaders() });
+  return new Response(null, { status: 204 });
 }
 
 // MARK: - Scheduled sweep
