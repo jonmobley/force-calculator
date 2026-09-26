@@ -112,13 +112,32 @@ npm run migrate:local
 # Rotate the legacy service-wide token, which now only covers the `default` row
 npx wrangler secret put WRITE_TOKEN
 
-# Validate and typecheck
+# Validate, typecheck and test
 npm run check
 npm run typecheck
+npm test
 
 # Live logs
 npm run tail
 ```
+
+## Tests
+
+`npm test` runs Vitest inside `workerd` through `@cloudflare/vitest-plugin`, so the
+tests exercise the real D1, rate-limit and crypto bindings rather than mocks.
+`vitest.config.mts` reads `wrangler.jsonc` for the bindings, loads `migrations/` into a
+test-only `TEST_MIGRATIONS` binding, and `test/apply-migrations.ts` applies them before
+each test file. Storage is rolled back between tests; rate-limit counters are not, so
+tests that write config use a fresh `cf-connecting-ip` each. `WRITE_TOKEN` is set to a
+fixed value under test.
+
+Adding dev dependencies: use `npx npm@11 install -D <package>`. npm 10's resolver
+fails on this tree with `Cannot read properties of null (reading 'edgesOut')`. The
+lockfile npm 11 writes installs fine with a plain `npm ci` on npm 10, which is what
+CI runs.
+
+CI (`.github/workflows/ci.yml`) runs `npm ci`, `npm run typecheck`, `npm run check` and
+`npm test` for the Worker on every pull request.
 
 ## Inspecting stored config
 
