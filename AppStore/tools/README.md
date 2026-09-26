@@ -33,8 +33,11 @@ swiftc -O flatten.swift -o /tmp/flatten
 ```bash
 UDID=<simulator udid>
 
-# Put the app in a presentable state: force number set, features on.
-python3 seed_force.py $UDID
+# Put the app in a presentable state: force number set, features on. Launch the
+# app once first so its App Group container exists, and quit it before seeding.
+# Pass a force number, and `peek` as a third argument to turn Live Peek on in a
+# build that offers it.
+python3 seed_force.py $UDID 4556325
 
 # Freeze the status bar the way Apple's own marketing shots look.
 xcrun simctl status_bar $UDID override --time "9:41" \
