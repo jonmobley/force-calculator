@@ -91,6 +91,10 @@ knows the id. That is not a regression: the force number used to be written in p
 text onto the NFC tag itself, where any tag reader could see it. Ids are 128 bits of
 randomness precisely because reading needs no token.
 
+No route sends CORS headers, and a preflight gets 405. Only the native app and App
+Clip call the API, and neither needs one, so a web page elsewhere cannot read it
+through a visitor's browser.
+
 Peek writes are unauthenticated for the same reason — the clip sending the
 spectator's number can never hold a token. Peek *reads* require the id's token, so
 only the performer sees what a spectator typed.
@@ -117,7 +121,9 @@ npm run check
 npm run typecheck
 npm test
 
-# Live logs
+# Live logs. Stored Workers Logs keep no invocation logs (their request metadata
+# includes the bearer token) and sample 10% of the Worker's own logs, which never
+# contain a token, so this is where to look while debugging.
 npm run tail
 ```
 
