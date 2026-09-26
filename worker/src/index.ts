@@ -14,6 +14,7 @@
  *
  *   GET    /v1/config?id=<performer>  -> current settings, readable by the App Clip
  *   PUT    /v1/config?id=<performer>  -> replace settings, requires that id's token
+ *   DELETE /v1/config?id=<performer>  -> erase settings and peeks, requires that id's token
  *   PUT    /v1/peek?id=<performer>    -> report one number the spectator typed, no token
  *   GET    /v1/peek?id=<performer>    -> the calculation so far, requires that id's token
  *   DELETE /v1/peek?id=<performer>    -> clear it between spectators, requires the token
@@ -28,31 +29,29 @@
  * hash of its token, and nothing else may write or read peeks for that id afterwards.
  * Before this, every install shared the id `default` behind one service-wide token, so
  * performers overwrote each other's force numbers and could read each other's peeks.
+ *
+ * Settings the app has not published to in a year are erased by the cron, and the owner
+ * can erase them sooner. The id stays bound to its token either way, so a tag printed
+ * with it can never be claimed by someone else.
  */
 
+import { readConfig, writeConfig, type ConfigEnv } from "./config";
 import {
-  authorize,
-  bearerToken,
   clearPeek,
-  corsHeaders,
   json,
-  MAX_PAYLOAD_BYTES,
   problem,
   pruneExpiredPeeks,
-  readBoundedBody,
   readPeek,
-  sha256Hex,
   writePeek,
-  type Claim,
-  type PeekEnv,
 } from "./peek";
+import { eraseConfig, eraseUnusedConfigs } from "./retention";
 
 const DEFAULT_ID = "default";
 
 /** Ids are used directly as primary keys, so keep them boring. */
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
-interface Env extends PeekEnv {}
+interface Env extends ConfigEnv {}
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -83,10 +82,6 @@ export default {
       return problem(400, "Invalid id");
     }
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: corsHeaders() });
-    }
-
     if (url.pathname === "/v1/peek") {
       switch (request.method) {
         case "GET":
@@ -105,6 +100,8 @@ export default {
         return readConfig(env, id);
       case "PUT":
         return writeConfig(request, env, id);
+      case "DELETE":
+        return eraseConfig(request, env, id);
       default:
         return problem(405, "Method not allowed");
     }
@@ -116,120 +113,9 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<void> {
     await pruneExpiredPeeks(env);
+    await eraseUnusedConfigs(env);
   },
 } satisfies ExportedHandler<Env>;
-
-async function readConfig(env: Env, id: string): Promise<Response> {
-  const row = await env.DB.prepare(
-    "SELECT payload, updated_at FROM config WHERE id = ?",
-  )
-    .bind(id)
-    .first<{ payload: string; updated_at: number }>();
-
-  if (!row) {
-    return problem(404, "No configuration published yet");
-  }
-
-  // The clip must never act on a cached copy: the performer may have changed the
-  // force number seconds ago.
-  return new Response(row.payload, {
-    headers: {
-      "content-type": "application/json; charset=utf-8",
-      "cache-control": "no-store",
-      "x-updated-at": String(row.updated_at),
-      ...corsHeaders(),
-    },
-  });
-}
-
-async function writeConfig(
-  request: Request,
-  env: Env,
-  id: string,
-): Promise<Response> {
-  const presented = bearerToken(request);
-  if (presented === null) {
-    return problem(401, "Unauthorized");
-  }
-  const claim = await authorize(env, id, presented);
-  if (claim === "denied") {
-    return problem(401, "Unauthorized");
-  }
-
-  const bounded = await readBoundedBody(
-    request,
-    MAX_PAYLOAD_BYTES,
-    "Configuration too large",
-  );
-  if (!bounded.ok) {
-    return bounded.response;
-  }
-  const body = bounded.body;
-
-  // Store the document verbatim so the Worker needs no knowledge of the app's
-  // settings shape, but confirm it is JSON so a bad write cannot poison reads.
-  try {
-    JSON.parse(body);
-  } catch {
-    return problem(400, "Body must be JSON");
-  }
-
-  const stored = await storeConfig(env, id, body, presented, claim);
-  if (!stored) {
-    return problem(401, "Unauthorized");
-  }
-  return new Response(null, { status: 204, headers: corsHeaders() });
-}
-
-/**
- * Writes the payload, re-checking ownership in the same statement that writes it.
- *
- * `authorize` reads before the write, so two first writers could both be told `claim`.
- * An upsert let the loser of that race overwrite the winner's payload, and let whoever
- * landed first take the id from the install that printed it on a tag. A claim is now an
- * insert that does nothing if the id exists, and every other write is an update that only
- * matches the right owner. A claim that loses the race is authorized again, so the same
- * install publishing twice at once still lands.
- */
-async function storeConfig(
-  env: Env,
-  id: string,
-  body: string,
-  presented: string,
-  claim: Exclude<Claim, "denied">,
-): Promise<boolean> {
-  const tokenHash = await sha256Hex(presented);
-  const now = Date.now();
-  let access: Claim = claim;
-
-  if (access === "claim") {
-    const inserted = await env.DB.prepare(
-      `INSERT INTO config (id, payload, updated_at, token_hash) VALUES (?, ?, ?, ?)
-       ON CONFLICT(id) DO NOTHING`,
-    )
-      .bind(id, body, now, tokenHash)
-      .run();
-    if (inserted.meta.changes > 0) {
-      return true;
-    }
-    access = await authorize(env, id, presented);
-  }
-  if (access !== "matched") {
-    return false;
-  }
-
-  // `matched` means the row carries this token's hash, or carries none and the request
-  // presented the service-wide token. No write ever sets a hash on an existing row, so
-  // neither can change between the check and this statement. A legacy row keeps its
-  // NULL hash rather than being locked away from the install that owns it.
-  const updated = await env.DB.prepare(
-    `UPDATE config SET payload = ?, updated_at = ?
-     WHERE id = ? AND (token_hash = ? OR token_hash IS NULL)`,
-  )
-    .bind(body, now, id, tokenHash)
-    .run();
-  return updated.meta.changes > 0;
-}
 
 /** Brand landing for forcemagic.app — points reviewers and buyers to support. */
 function homePage(): Response {
@@ -276,7 +162,6 @@ function homePage(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
@@ -311,7 +196,7 @@ function privacyPolicy(): Response {
 </head>
 <body>
   <h1>Force Privacy Policy</h1>
-  <p class="meta">Last updated: September 23, 2026</p>
+  <p class="meta">Last updated: September 26, 2026</p>
 
   <p>
     Force is a calculator prop for magicians. It includes an optional App Clip that a
@@ -366,7 +251,8 @@ function privacyPolicy(): Response {
 
   <h2>Retention</h2>
   <ul>
-    <li>Settings remain until you overwrite them or we delete unused records.</li>
+    <li>Settings remain until you overwrite them, and are erased after a year without the
+      app being opened.</li>
     <li>Live Peek entries expire after about ten minutes and can be cleared sooner.</li>
   </ul>
 
@@ -386,7 +272,6 @@ function privacyPolicy(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
@@ -454,7 +339,6 @@ function supportPage(): Response {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300",
-      ...corsHeaders(),
     },
   });
 }
