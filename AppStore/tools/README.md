@@ -33,14 +33,14 @@ swiftc -O flatten.swift -o /tmp/flatten
 ```bash
 UDID=<simulator udid>
 
-# Put the app in a presentable state: force number set, features on.
-python3 seed_force.py $UDID
-
 # Freeze the status bar the way Apple's own marketing shots look.
 xcrun simctl status_bar $UDID override --time "9:41" \
   --batteryState charged --batteryLevel 100 --wifiMode active --wifiBars 3
 
-xcrun simctl launch $UDID com.mobleypro.mobley.Force
+# Launch with presentable settings: force number set, Perfect Plus on. They are passed
+# as a launch argument and not saved. Add `peek` after the number to turn Live Peek on
+# in a build that offers it.
+python3 seed_force.py $UDID 4556325
 
 # Measure where the device screen sits inside the simulator window. Run this while a
 # light screen is showing: the detector finds the screen as the lit band inside the

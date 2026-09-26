@@ -22,7 +22,7 @@ The most important items:
    `100+4,556,225`, so the main effect fails on screen. **Fixed.**
 2. Live Peek sends what the spectator types from the App Clip to the server without telling
    them. This is the biggest App Review risk (guidelines 5.1.1 and 5.1.2). **Fixed** by leaving
-   Live Peek out of the first release; one screenshot still needs retaking.
+   Live Peek out of the first release.
 3. The first claim of a performer id on the Worker can race, and the app shows the QR and NFC
    link before the claim has landed. Someone who sees the code first can lock the performer out
    of every tag printed with it. **Fixed.**
@@ -153,8 +153,8 @@ Live Peek is left out of the first release. `CalculatorSettings.livePeekAvailabl
 link. The host hides the Live Peek row, and the Clip neither reports nor polls for the switch.
 The review notes, listing, privacy manifests, App Privacy checklist and privacy page no longer
 describe it. The Worker's peek routes stay, so turning it back on only needs the flag and the
-disclosures. Still to do: `AppStore/Screenshots/iPhone-6.9/02-settings.png` shows a Live Peek
-toggle and an older settings layout. Retake it on a simulator before submitting (guideline 2.3.3).
+disclosures. `AppStore/Screenshots/iPhone-6.9/02-settings.png`, which showed a Live Peek toggle
+and an older settings layout, is retaken from this build on an iPhone 17 Pro Max simulator.
 
 The options that were considered:
 `ForceClip/CalculatorView.swift` reports each entry through `Shared/PeekReporter.swift` to
