@@ -7,8 +7,8 @@
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
 	<!-- The performer's own trick settings are published so a QR code or NFC sticker
-	     already in circulation keeps working after they change the force number, and
-	     Live Peek reads back the number a spectator typed. Both are stored under a random
+	     already in circulation keeps working after they change the force number. They are
+	     stored under a random
 	     identifier generated on the device, which is an account-level id for the service
 	     and is declared as User ID. Nothing links it to a name, email, or device. -->
 	<key>NSPrivacyCollectedDataTypes</key>

@@ -33,7 +33,6 @@ Optional tools for performers:
 
 - Perfect Plus — turn the phone face down after pressing + and Force works out the
   addend that lands on your number
-- Live Peek — when you want it, see the spectator's calculation on your own phone
 - Start with Screenshot — open on an image of your Home Screen so handing over an
   unlocked phone does not give the trick away
 - Date and Time mode — force a number built from the current date and time

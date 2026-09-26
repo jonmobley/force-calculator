@@ -220,13 +220,6 @@ function privacyPolicy(): Response {
       toggles only.
     </li>
     <li>
-      <strong>Live Peek (optional, off by default).</strong> If you turn Live Peek on, the
-      App Clip sends the calculation a spectator types so you can read it on your own
-      phone during a performance. Entries are short numeric strings and operators. They are
-      kept briefly for the performance, then expire automatically, and you can clear them
-      at any time.
-    </li>
-    <li>
       <strong>Install identifiers.</strong> Each install generates a random performer id
       and a random write token on the device. Neither is derived from your Apple ID,
       device serial, advertising identifier, or other personal data.
@@ -243,24 +236,23 @@ function privacyPolicy(): Response {
 
   <h2>How data is used</h2>
   <p>
-    Settings and Live Peek exist only so the trick works across your phone and a
-    spectator’s App Clip. We do not sell data, use it for advertising, or combine it with
+    Settings exist only so the trick works across your phone and a spectator’s App Clip.
+    The App Clip reads them and sends nothing about what a spectator types. We do not sell data, use it for advertising, or combine it with
     other sources to identify a person.
   </p>
 
   <h2>Where data is stored</h2>
   <p>
-    Configuration and Live Peek are stored on a Cloudflare Worker and D1 database under
-    our control. Tokens never leave the performer’s Keychain except as a bearer
-    credential on publish and peek-read requests.
+    Settings are stored on a Cloudflare Worker and D1 database under our control. Tokens
+    never leave the performer’s Keychain except as a bearer credential when the app
+    publishes settings.
   </p>
 
   <h2>Retention</h2>
-  <ul>
-    <li>Settings remain until you overwrite them, and are erased after a year without the
-      app being opened.</li>
-    <li>Live Peek entries expire after about ten minutes and can be cleared sooner.</li>
-  </ul>
+  <p>
+    Settings remain until you overwrite them, and are erased after a year without the app
+    being opened.
+  </p>
 
   <h2>Children</h2>
   <p>Force is not directed at children under 13, and we do not knowingly collect data from them.</p>
@@ -327,7 +319,6 @@ function supportPage(): Response {
   <h2>Common topics</h2>
   <ul>
     <li>App Clip QR code or NFC sticker not opening the spectator calculator</li>
-    <li>Live Peek not showing the spectator’s calculation</li>
     <li>Settings not updating for spectators after you change the force number</li>
     <li>Perfect Plus / face-down behavior</li>
   </ul>
