@@ -128,8 +128,38 @@ describe("the legacy token", () => {
 
     const row = await configRow(id);
     expect(row?.payload).toBe(OTHER_SETTINGS);
-    // The row is not locked to a hash on the way past.
-    expect(row?.token_hash).toBeNull();
+    expect(row?.token_hash).toBe(await sha256Hex(env.WRITE_TOKEN));
+  });
+
+  it("keeps a bound legacy row working after the secret is rotated", async () => {
+    const id = freshId();
+    const oldSecret = env.WRITE_TOKEN;
+    await insertRow({ id, payload: SETTINGS, token_hash: null });
+    const bind = await call("PUT", "/v1/config", id, { token: oldSecret, body: SETTINGS });
+    expect(bind.status).toBe(204);
+
+    const rotated = { ...env, WRITE_TOKEN: "rotated-service-token" };
+    expect(await authorize(rotated, id, oldSecret)).toBe("matched");
+    expect(await authorize(rotated, id, rotated.WRITE_TOKEN)).toBe("denied");
+
+    // An unbound row follows the secret: the old one stops working the moment it rotates.
+    const unbound = freshId();
+    await insertRow({ id: unbound, token_hash: null });
+    expect(await authorize(rotated, unbound, oldSecret)).toBe("denied");
+    expect(await authorize(rotated, unbound, rotated.WRITE_TOKEN)).toBe("matched");
+  });
+
+  it("binds only the hash of the token that wrote, never a racing writer's", async () => {
+    const id = freshId();
+    await insertRow({ id, token_hash: null });
+    const outcomes = await Promise.all([
+      call("PUT", "/v1/config", id, { token: env.WRITE_TOKEN, body: SETTINGS }),
+      call("PUT", "/v1/config", id, { token: freshToken(), body: OTHER_SETTINGS }),
+    ]);
+    expect(outcomes.map((response) => response.status)).toEqual([204, 401]);
+    const row = await configRow(id);
+    expect(row?.token_hash).toBe(await sha256Hex(env.WRITE_TOKEN));
+    expect(row?.payload).toBe(SETTINGS);
   });
 
   it("does not open a claimed row to the service-wide token", async () => {
