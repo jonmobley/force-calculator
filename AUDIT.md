@@ -120,14 +120,14 @@ remembered across launches, so an offline performer can still write tags later.
 |---|---|---|---|
 | S3 | Anyone who knows an id can post peeks while Live Peek is on. The rate limit (100 per 10 s) is enough to flood the 40-entry tape. Options: a per-session nonce published with the config, or keep only the first session's entries. | `worker/src/peek.ts` ~120-185 | Backlog |
 | S4 | Rows with no `token_hash` still accept the shared `WRITE_TOKEN`, so pre-tenancy installs on `id=default` share one record. Bind a hash on the next legacy write, then rotate the secret. | `worker/src/peek.ts` `authorize` | Backlog |
-| S5 | Config writes have no rate limit, so ids can be squatted in bulk. | `worker/src/index.ts`, `wrangler.jsonc` | Backlog |
+| S5 | Config writes had no rate limit, so ids could be squatted in bulk. Now `CONFIG_WRITE_LIMIT`, 30 per 60 s per `cf-connecting-ip`, checked before the token so unclaimed ids are covered too; 429 when exceeded. | `worker/src/config.ts` `writeConfig`, `wrangler.jsonc` | **Fixed** |
 | S6 | Observability samples every request (`head_sampling_rate: 1`), so logs can keep `Authorization` headers. Lower it and redact. | `worker/wrangler.jsonc` ~14 | Backlog |
-| S7 | Config is never deleted. The privacy page says unused settings are deleted, but nothing does it. Add `DELETE /v1/config` and a cron sweep. | migrations; `worker/src/index.ts` privacy text | Backlog |
+| S7 | Config was never deleted although the privacy page said unused settings are. Now `DELETE /v1/config` for the owner, and the cron erases configs not published to in 365 days. Erasing sets the payload to `{}` and `erased_at`, deletes the id's peeks, and keeps `token_hash` so a printed id cannot be re-claimed; the owner's next publish revives it. The privacy page says settings are erased after a year without the app being opened. | `worker/src/retention.ts`, `migrations/0005_add_erased_at.sql` | **Fixed** |
 
 ### Low
 
-- The legacy plaintext comparison returns early on a length mismatch. Hash both sides first.
-  `worker/src/peek.ts` `constantTimeEqual`. Backlog.
+- The legacy plaintext comparison returned early on a length mismatch. Both sides are now
+  hashed with `sha256Hex` before `constantTimeEqual`. `worker/src/peek.ts` `authorize`. **Fixed.**
 - `Access-Control-Allow-Origin: *` on API routes. The native clients don't need CORS. Backlog.
 - Peek values are only charset-checked (`......` passes). Backlog.
 - `GET /v1/config` is public, so anyone with the id can read the force number. Documented and
@@ -190,17 +190,21 @@ speak to the performer, not to the person whose input is sent. Options:
 
 ## 4. Code quality and tests
 
-### High (Backlog)
+### High
 
 - **Duplicated calculator glue.** `Force/CalculatorView.swift` (264) and
   `ForceClip/CalculatorView.swift` (309) share about thirteen helpers that are 74-100% identical
   (`calculatePerfectAddend`, `digitPressed`, `toggleQuickEntry`, `scheduleModeHide`). The clear-key
-  drift (M2) came from this. Move the key handling into `Shared/`.
-- **No CI.** There is no `.github/`. Add `xcodebuild test` on a macOS runner and
-  `npm run typecheck` for the Worker.
-- **No Worker tests** and no lint. `worker/package.json` has only `typecheck` and `check`, and
-  `npm run check` fails on the installed Wrangler 4, where `wrangler check` needs a subcommand.
-- **`ForceConfigService` has no tests.** Stub `URLSession` with a `URLProtocol` subclass.
+  drift (M2) came from this. Move the key handling into `Shared/`. Backlog.
+- **No CI.** There was no `.github/`. `.github/workflows/ci.yml` now runs `xcodebuild test` on a
+  macOS runner and `npm ci`, `npm run typecheck`, `npm run check` and `npm test` for the Worker
+  on every pull request. **Fixed.**
+- **No Worker tests** and no lint. `worker/package.json` had only `typecheck` and `check`, and
+  `npm run check` failed on the installed Wrangler 4. `check` is now a dry-run deploy, and
+  `npm test` runs Vitest inside `workerd` through `@cloudflare/vitest-plugin` against the real
+  D1 migrations: ownership, the claim race, the legacy token, erasing, the retention sweep, the
+  config write limit, and peek gating, reads and clears. Still no lint. **Fixed.**
+- **`ForceConfigService` has no tests.** Stub `URLSession` with a `URLProtocol` subclass. Backlog.
 
 ### Medium (Backlog)
 
@@ -236,7 +240,8 @@ orphan files.
   D1. Of 20 concurrent first claims with different tokens, one got 204 and its payload is the one
   stored. The same install publishing twice at once succeeds. The legacy `WRITE_TOKEN` row still
   accepts that token and rejects others. On the old code all 20 got 204 and a loser's payload
-  was stored.
+  was stored. Those checks, plus erasing, the retention sweep, the write limit and peek, are
+  now `npm test` (24 tests under `workerd`), and `npm run check` dry-runs the deploy.
 - Swift: every file parses with Swift 6.4 on Linux. `CalculatorFormatter` was compiled and run
   there: the new tests' assertions pass, output on an English device is unchanged, and the old
   code on a `de_DE` formatter turns `12.5` into `12,5`, which parses back as `125`.
