@@ -95,6 +95,12 @@ public class CalculatorSettings: ObservableObject, Codable {
     /// performer has deliberately turned live peek on.
     @Published public var livePeekEnabled: Bool = false
 
+    /// Whether this build offers Live Peek at all. Held back from the first App Store
+    /// release because the spectator is not told their input leaves the phone (AUDIT A1).
+    /// While false, `livePeekEnabled` can never become true from a stored record, a
+    /// fetched config, or a link, so the clip sends nothing whatever older builds wrote.
+    public static let livePeekAvailable = false
+
     public static let appGroup = "group.com.mobleypro.mobley.Force"
     public static let userDefaultsKey = "calculatorSettings"
 
@@ -146,7 +152,8 @@ public class CalculatorSettings: ObservableObject, Codable {
         perfectPlusHapticsEnabled = try container
             .decodeIfPresent(Bool.self, forKey: .perfectPlusHapticsEnabled) ?? true
         startWithScreenshot = try container.decodeIfPresent(Bool.self, forKey: .startWithScreenshot) ?? false
-        livePeekEnabled = try container.decodeIfPresent(Bool.self, forKey: .livePeekEnabled) ?? false
+        livePeekEnabled = Self.livePeekAvailable
+            && (try container.decodeIfPresent(Bool.self, forKey: .livePeekEnabled) ?? false)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -182,7 +189,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         perfectPlusEnabled = stored.perfectPlusEnabled
         perfectPlusHapticsEnabled = stored.perfectPlusHapticsEnabled
         startWithScreenshot = stored.startWithScreenshot
-        livePeekEnabled = stored.livePeekEnabled
+        livePeekEnabled = Self.livePeekAvailable && stored.livePeekEnabled
     }
 
     /// Where this object loads and saves. Nil uses the app-group suite.
