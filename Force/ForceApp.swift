@@ -65,9 +65,18 @@ struct ForceApp: App {
     private func bootstrap() {
         settings.loadSettings()
         settings.beginAutosave()
-        configPublisher.start(observing: settings)
+        // The unit tests are hosted in this app, so every test run launches it. Publishing
+        // then would claim a fresh id on the live service each time.
+        if !Self.isHostingUnitTests {
+            configPublisher.start(observing: settings)
+        }
         rootScreen = decideLaunchRoot()
         isReady = true
+    }
+
+    /// True when XCTest launched the app only to host the unit tests.
+    private static var isHostingUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
     /// Picks the root the app should open into, synchronously, so the first
