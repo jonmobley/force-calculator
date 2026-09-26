@@ -158,10 +158,13 @@ struct CalculatorView: View {
 
     /// Live peek must report the spectator's number, never the performer's own
     /// setup. The covert clock sequence types the force number straight onto the
-    /// display, and Perfect Plus leaves a staged value there while the phone is
-    /// turned away, so peek stays quiet through both.
+    /// display, and Perfect Plus leaves a staged value there, so peek stays quiet through
+    /// both. The staged value stays secret after the phone comes back, until the spectator
+    /// types over it; reported, it would give the method away on the performer's screen.
     private var peekSuppressed: Bool {
-        quickForce.isArmed || perfectPlusHandler.mode.keysAreInert
+        quickForce.isArmed
+            || perfectPlusHandler.mode.keysAreInert
+            || (perfectPlusHandler.mode == .calculated && calc.operandStaged)
     }
 
     private func reportPeek() {
@@ -256,6 +259,7 @@ struct CalculatorView: View {
         // Read before anything moves: finishing a pending sum replaces the display with
         // the running total, and the performer wants the number the spectator typed.
         let typed = calc.display
+        let typedIsSecret = peekSuppressed
         // An operator pressed part-way through an entry finishes the sum on the go first,
         // so the display carries the running total into the next operation.
         if op != .percent,
@@ -268,17 +272,20 @@ struct CalculatorView: View {
             settings: settings,
             perfectPlusHandler: perfectPlusHandler
         )
-        closePeek(typed, with: op.peekSymbol)
+        closePeek(typed, with: op.peekSymbol, suppressed: typedIsSecret)
     }
 
     private func equals() {
         // Mid-sequence, equals commits the typed force number instead of calculating.
         if quickForce.consumeEquals(display: calc.display) { return }
         let typed = calc.display
+        // Read before evaluating: the Perfect Plus reveal resets the trick, which would
+        // otherwise let the staged number through as if the spectator had typed it.
+        let typedIsSecret = peekSuppressed
         evaluate()
         // The number the spectator pressed equals on, then the answer they were shown,
         // which is a new entry of its own.
-        closePeek(typed, with: "=")
+        closePeek(typed, with: "=", suppressed: typedIsSecret)
         reportPeek()
     }
 
@@ -294,12 +301,12 @@ struct CalculatorView: View {
         )
     }
 
-    private func closePeek(_ value: String, with op: String) {
+    private func closePeek(_ value: String, with op: String, suppressed: Bool) {
         peek.close(
             value,
             with: op,
             enabled: settings.livePeekEnabled,
-            suppressed: peekSuppressed
+            suppressed: suppressed
         )
     }
 
