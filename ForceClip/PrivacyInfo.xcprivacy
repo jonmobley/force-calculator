@@ -6,9 +6,10 @@
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
 	<array/>
-	<!-- Live Peek, which the performer must switch on, sends the number the spectator
-	     has typed so the performer can read it on their own phone. A short numeric
-	     string, overwritten on every send, tied to no person and no device. -->
+	<!-- Live Peek, which the performer must switch on, sends the numbers the spectator
+	     types so the performer can read the calculation on their own phone. Stored under
+	     the performer's id, not the spectator's, and deleted after ten minutes. Nothing
+	     identifies the spectator or their device, so it is not linked. -->
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array>
 		<dict>

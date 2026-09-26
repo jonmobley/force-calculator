@@ -22,9 +22,15 @@ Match [Force/PrivacyInfo.xcprivacy](../Force/PrivacyInfo.xcprivacy):
 
 | Data type | Purpose | Linked to identity | Used for tracking |
 | --- | --- | --- | --- |
-| Other User Content (spectator calculation / settings) | App Functionality | No | No |
+| Identifiers → User ID (random performer id the service stores settings under) | App Functionality | Yes | No |
+| Other User Content (trick settings, spectator calculation) | App Functionality | Yes | No |
 
-No Contact Info, Location, Identifiers, Purchases, Usage Data, Diagnostics, or Surroundings.
+The performer id is generated on the device and is not tied to a name, email, or device, but
+settings and peeks are stored against it, so both rows are linked. The App Clip's own manifest
+declares the spectator's calculation as not linked, because it is stored under the
+performer's id and nothing identifies the spectator.
+
+No Contact Info, Location, Device ID, Purchases, Usage Data, Diagnostics, or Surroundings.
 
 ## App Clip
 
