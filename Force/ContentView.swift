@@ -21,7 +21,9 @@ struct ContentView: View {
         NavigationStack {
             Form {
                 ForceTrickSection(forceNumberText: $forceNumberText)
-                trickLinks
+                if CalculatorSettings.livePeekAvailable {
+                    trickLinks
+                }
                 performanceLinks
                 appLinks
             }

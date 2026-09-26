@@ -21,7 +21,8 @@ The most important items:
 1. The Perfect Plus number never reaches the readout. Both calculators show `100+` instead of
    `100+4,556,225`, so the main effect fails on screen. **Fixed.**
 2. Live Peek sends what the spectator types from the App Clip to the server without telling
-   them. This is the biggest App Review risk (guidelines 5.1.1 and 5.1.2). **Decision.**
+   them. This is the biggest App Review risk (guidelines 5.1.1 and 5.1.2). **Fixed** by leaving
+   Live Peek out of the first release; one screenshot still needs retaking.
 3. The first claim of a performer id on the Worker can race, and the app shows the QR and NFC
    link before the claim has landed. Someone who sees the code first can lock the performer out
    of every tag printed with it. **Fixed.**
@@ -146,7 +147,16 @@ without alpha, 1320×2868 screenshots, debug logging behind `#if DEBUG`, no `.p8
 
 ### Critical
 
-**A1. Live Peek uploads the spectator's input without telling them** — **Decision**
+**A1. Live Peek uploads the spectator's input without telling them** — **Fixed** (option 3)
+Live Peek is left out of the first release. `CalculatorSettings.livePeekAvailable` is false, so
+`livePeekEnabled` stays false whether it comes from a stored record, a fetched config or a `pk`
+link. The host hides the Live Peek row, and the Clip neither reports nor polls for the switch.
+The review notes, listing, privacy manifests, App Privacy checklist and privacy page no longer
+describe it. The Worker's peek routes stay, so turning it back on only needs the flag and the
+disclosures. Still to do: `AppStore/Screenshots/iPhone-6.9/02-settings.png` shows a Live Peek
+toggle and an older settings layout. Retake it on a simulator before submitting (guideline 2.3.3).
+
+The options that were considered:
 `ForceClip/CalculatorView.swift` reports each entry through `Shared/PeekReporter.swift` to
 `PUT /v1/peek`. The spectator sees an ordinary calculator. The review notes and privacy policy
 speak to the performer, not to the person whose input is sent. Options:

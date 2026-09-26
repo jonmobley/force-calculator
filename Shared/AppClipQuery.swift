@@ -151,7 +151,7 @@ public struct AppClipQuery: Equatable {
             settings.startWithScreenshot = enabled
         }
         if let raw = value("pk", in: items), let enabled = Bool(raw) {
-            settings.livePeekEnabled = enabled
+            settings.livePeekEnabled = CalculatorSettings.livePeekAvailable && enabled
         }
     }
 }
