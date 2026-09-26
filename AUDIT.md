@@ -204,7 +204,8 @@ speak to the performer, not to the person whose input is sent. Options:
   `npm test` runs Vitest inside `workerd` through `@cloudflare/vitest-plugin` against the real
   D1 migrations: ownership, the claim race, the legacy token, erasing, the retention sweep, the
   config write limit, and peek gating, reads and clears. Still no lint. **Fixed.**
-- **`ForceConfigService` has no tests.** Stub `URLSession` with a `URLProtocol` subclass. Backlog.
+- **`ForceConfigService` had no tests.** `ForceTests/ForceConfigServiceTests.swift` now covers
+  the requests it sends and how it maps each Worker status, through `StubURLProtocol`. **Fixed.**
 
 ### Medium (Backlog)
 
@@ -226,7 +227,7 @@ speak to the performer, not to the person whose input is sent. Options:
 | PerfectPlusMath, AppClipQuery, DateTimeNumber, QuickForceEntry, PeekReporter, PeekUploader | Good |
 | PerfectPlusHandler, ForceActivation, CalculatorSettings, CalculatorOperations | Through flow tests |
 | CalculatorFormatter | `formatResult` only until this branch; now also locale round-trip |
-| ForceConfigService | None |
+| ForceConfigService | Requests and status mapping, via a `URLProtocol` stub |
 | UI (keypad, readout, NFC, QR, image storage) | None (expected) |
 
 All Swift files are members of their targets through synchronized root groups; there are no
