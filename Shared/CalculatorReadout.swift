@@ -232,7 +232,8 @@ public struct CalculatorReadout: View {
                 .font(.system(size: min(geometry.size.width * 0.165, 74), weight: .regular))
                 .foregroundColor(.white)
                 .padding(.horizontal, Metrics.readoutInset)
-                .minimumScaleFactor(0.5)
+                // Expressions like `1,234 + 5,678` need more room than a lone result.
+                .minimumScaleFactor(0.28)
                 .lineLimit(1)
         }
         .padding(.bottom, 30)

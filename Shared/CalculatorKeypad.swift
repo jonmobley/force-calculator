@@ -7,9 +7,6 @@ import SwiftUI
 public struct CalculatorKeypad: View {
     @ObservedObject var settings: CalculatorSettings
     @Binding var showForceNumber: Bool
-    /// The operator waiting for its next operand, so that key stays inverted the way
-    /// stock Calculator does after `+` / `−` / `×` / `÷`.
-    let selectedOperation: CalculatorOperation?
     let digitAction: (String) -> Void
     let decimalAction: () -> Void
     let backspaceAction: () -> Void
@@ -40,7 +37,6 @@ public struct CalculatorKeypad: View {
     public init(
         settings: CalculatorSettings,
         showForceNumber: Binding<Bool>,
-        selectedOperation: CalculatorOperation? = nil,
         digitAction: @escaping (String) -> Void,
         decimalAction: @escaping () -> Void,
         backspaceAction: @escaping () -> Void,
@@ -51,7 +47,6 @@ public struct CalculatorKeypad: View {
     ) {
         self.settings = settings
         _showForceNumber = showForceNumber
-        self.selectedOperation = selectedOperation
         self.digitAction = digitAction
         self.decimalAction = decimalAction
         self.backspaceAction = backspaceAction
@@ -80,13 +75,7 @@ public struct CalculatorKeypad: View {
             icon("icon-percent", color: Self.neutral, pressed: Self.neutralPressed, size: 36) {
                 operationAction(.percent)
             }
-            icon(
-                "icon-divide",
-                color: operatorColor,
-                pressed: operatorPressed,
-                size: 38,
-                selected: selectedOperation == .divide
-            ) {
+            icon("icon-divide", color: operatorColor, pressed: operatorPressed, size: 38) {
                 operationAction(.divide)
             }
         }
@@ -101,13 +90,7 @@ public struct CalculatorKeypad: View {
             ForEach(titles, id: \.self) { title in
                 digitKey(title)
             }
-            icon(
-                iconName,
-                color: operatorColor,
-                pressed: operatorPressed,
-                size: 34,
-                selected: selectedOperation == operation
-            ) {
+            icon(iconName, color: operatorColor, pressed: operatorPressed, size: 34) {
                 operationAction(operation)
             }
         }
@@ -143,7 +126,6 @@ public struct CalculatorKeypad: View {
         color: Color,
         pressed: Color,
         size: CGFloat,
-        selected: Bool = false,
         action: @escaping () -> Void
     ) -> some View {
         NewIconCalculatorButton(
@@ -151,8 +133,7 @@ public struct CalculatorKeypad: View {
             backgroundColor: color,
             pressedBackgroundColor: pressed,
             action: action,
-            iconSize: size,
-            isSelected: selected
+            iconSize: size
         )
     }
 }

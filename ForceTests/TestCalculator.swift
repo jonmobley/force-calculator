@@ -15,6 +15,7 @@ final class TestCalculator {
     private let quickForce = QuickForceEntry()
 
     var display: String { calc.display }
+    var expressionDisplay: String { calc.expressionDisplay }
     var perfectPlusMode: PerfectPlusState { perfectPlusHandler.mode }
     var quickEntryStage: QuickForceEntry.Stage { quickForce.stage }
 
@@ -64,6 +65,13 @@ final class TestCalculator {
             state: &calc,
             settings: settings,
             perfectPlusHandler: perfectPlusHandler
+        )
+    }
+
+    func backspace() {
+        CalculatorOperations.backspace(
+            state: &calc,
+            perfectPlusMode: perfectPlusHandler.mode
         )
     }
 

@@ -30,7 +30,7 @@ struct CalculatorView: View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 CalculatorReadout(
-                    display: calc.display,
+                    display: calc.expressionDisplay,
                     geometry: geometry,
                     themeColor: settings.buttonTheme.color,
                     showForceNumber: showForceNumber,
@@ -45,7 +45,6 @@ struct CalculatorView: View {
                 CalculatorKeypad(
                     settings: settings,
                     showForceNumber: $showForceNumber,
-                    selectedOperation: calc.userIsTyping ? nil : calc.operation,
                     digitAction: digitPressed,
                     decimalAction: decimalPressed,
                     backspaceAction: backspace,

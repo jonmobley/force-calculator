@@ -46,7 +46,7 @@ struct CalculatorView: View {
         GeometryReader { geometry in
             VStack(spacing: 0) {
                 HostCalculatorDisplay(
-                    display: calc.display,
+                    display: calc.expressionDisplay,
                     geometry: geometry,
                     themeColor: settings.buttonTheme.color,
                     showForceNumber: showForceNumber,
@@ -62,7 +62,6 @@ struct CalculatorView: View {
                 CalculatorButtonGrid(
                     settings: settings,
                     showForceNumber: $showForceNumber,
-                    selectedOperation: calc.userIsTyping ? nil : calc.operation,
                     digitAction: digitPressed,
                     decimalAction: decimalPressed,
                     backspaceAction: backspace,
@@ -185,7 +184,9 @@ struct CalculatorView: View {
     
     private func backspace() {
         CalculatorOperations.backspace(state: &calc, perfectPlusMode: perfectPlusHandler.mode)
-        if !perfectPlusHoldsTheKeys { hasEntryToClear = calc.display != "0" }
+        if !perfectPlusHoldsTheKeys {
+            hasEntryToClear = calc.display != "0" || calc.operation != nil
+        }
     }
 
     /// While the phone is turned away the keypad is inert, so a tap entered nothing and the

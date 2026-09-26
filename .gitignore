@@ -21,3 +21,6 @@ xcuserdata/
 
 # Local venv for AppStore/asc-ship.sh
 AppStore/.venv/
+
+# Cached App Store Connect app id written by AppStore/asc-ship.sh
+AppStore/.app_id

@@ -35,4 +35,18 @@ public struct CalculatorState {
     public var lastOperand: Double = 0
 
     public init() {}
+
+    /// What the readout shows: the live entry, or the unfinished sum so far.
+    ///
+    /// Operators live here rather than lighting up on the keypad. After `10` then `+`
+    /// the display reads `10+`; once the next digits arrive it becomes `10+10`.
+    public var expressionDisplay: String {
+        guard let op = operation, op != .percent else { return display }
+        let left = CalculatorFormatter.formatResult(previousNumber)
+        let symbol = op.peekSymbol
+        if userIsTyping || percentReady {
+            return "\(left)\(symbol)\(display)"
+        }
+        return "\(left)\(symbol)"
+    }
 }

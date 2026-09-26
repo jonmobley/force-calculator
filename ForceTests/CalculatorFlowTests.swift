@@ -7,6 +7,46 @@ import ForceShared
 final class CalculatorFlowTests: XCTestCase {
     private let forceNumber = 4_556_325
 
+    /// Operators appear in the readout rather than lighting up on the keypad.
+    func testExpressionShowsOperatorBesideTheNumber() {
+        let calculator = TestCalculator(forceNumber: forceNumber, activationCount: 4)
+        calculator.type("10")
+        calculator.press(.add)
+        XCTAssertEqual(calculator.expressionDisplay, "10+")
+
+        calculator.type("10")
+        XCTAssertEqual(calculator.expressionDisplay, "10+10")
+
+        calculator.equals()
+        XCTAssertEqual(calculator.expressionDisplay, "20")
+        XCTAssertEqual(calculator.display, "20")
+    }
+
+    /// Backspace walks back through the unfinished sum: digits, then the operator,
+    /// then the left-hand number — so a pending `10+` is not stuck on screen.
+    func testBackspaceClearsPendingOperatorAndExpression() {
+        let calculator = TestCalculator(forceNumber: forceNumber, activationCount: 4)
+        calculator.type("10")
+        calculator.press(.add)
+        XCTAssertEqual(calculator.expressionDisplay, "10+")
+
+        calculator.backspace()
+        XCTAssertEqual(calculator.expressionDisplay, "10")
+
+        calculator.press(.add)
+        calculator.type("10")
+        XCTAssertEqual(calculator.expressionDisplay, "10+10")
+
+        calculator.backspace()
+        XCTAssertEqual(calculator.expressionDisplay, "10+1")
+        calculator.backspace()
+        XCTAssertEqual(calculator.expressionDisplay, "10+")
+        calculator.backspace()
+        XCTAssertEqual(calculator.expressionDisplay, "10")
+        calculator.backspace()
+        XCTAssertEqual(calculator.expressionDisplay, "1")
+    }
+
     /// An operator pressed part-way through an entry finishes the sum already under way, so
     /// the display carries the running total rather than the operand just typed.
     func testChainedOperatorCarriesTheRunningTotal() {

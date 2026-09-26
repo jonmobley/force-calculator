@@ -83,9 +83,6 @@ public struct NewIconCalculatorButton: View {
     let pressedBackgroundColor: Color
     let action: () -> Void
     let iconSize: CGFloat
-    /// True while this operator is the one waiting for its next operand — stock
-    /// Calculator inverts the key so the press is still readable after the finger lifts.
-    let isSelected: Bool
     @State private var isPressed = false
 
     public init(
@@ -93,15 +90,13 @@ public struct NewIconCalculatorButton: View {
         backgroundColor: Color,
         pressedBackgroundColor: Color,
         action: @escaping () -> Void,
-        iconSize: CGFloat = 36,
-        isSelected: Bool = false
+        iconSize: CGFloat = 36
     ) {
         self.iconName = iconName
         self.backgroundColor = backgroundColor
         self.pressedBackgroundColor = pressedBackgroundColor
         self.action = action
         self.iconSize = iconSize
-        self.isSelected = isSelected
     }
 
     public var body: some View {
@@ -112,18 +107,15 @@ public struct NewIconCalculatorButton: View {
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: iconSize, height: iconSize)
-                .foregroundColor(isSelected ? backgroundColor : .white)
+                .foregroundColor(.white)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .aspectRatio(1, contentMode: .fit)
-                .calculatorKeySurface(fill: fill)
+                .calculatorKeySurface(
+                    fill: isPressed ? pressedBackgroundColor : backgroundColor
+                )
         }
         .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
             isPressed = pressing
         }, perform: {})
-    }
-
-    private var fill: Color {
-        if isSelected { return .white }
-        return isPressed ? pressedBackgroundColor : backgroundColor
     }
 }

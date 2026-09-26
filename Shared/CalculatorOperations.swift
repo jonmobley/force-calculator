@@ -81,6 +81,15 @@ public struct CalculatorOperations {
         perfectPlusMode: PerfectPlusState
     ) {
         if perfectPlusMode.keysAreInert { return }
+        // A pending operator with no second operand yet (`10+`): erase the operator
+        // and leave the left-hand number. Typing digits of the right side falls through
+        // to ordinary digit deletion below.
+        if state.operation != nil, !state.userIsTyping, !state.percentReady {
+            state.operation = nil
+            state.display = CalculatorFormatter.formatResult(state.previousNumber)
+            state.previousNumber = 0
+            return
+        }
         if state.percentReady {
             state.percentReady = false
             state.userIsTyping = true
@@ -89,6 +98,8 @@ public struct CalculatorOperations {
         if cleaned.count > 1 {
             state.display = CalculatorFormatter.formatDisplay(String(cleaned.dropLast()))
         } else {
+            // Last digit of the right-hand entry: drop back to `10+` so another
+            // backspace can clear the operator next.
             state.display = "0"
             state.userIsTyping = false
         }
