@@ -8,7 +8,8 @@
     "deploy": "wrangler deploy",
     "check": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
     "types": "wrangler types",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test",
+    "test": "vitest run",
     "migrate": "wrangler d1 migrations apply force-config --remote",
     "migrate:local": "wrangler d1 migrations apply force-config --local",
     "tail": "wrangler tail"
