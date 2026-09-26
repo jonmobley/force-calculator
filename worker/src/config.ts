@@ -136,15 +136,19 @@ export async function storeConfig(
   }
 
   // `matched` means the row carries this token's hash, or carries none and the request
-  // presented the service-wide token. No write ever sets a hash on an existing row, so
-  // neither can change between the check and this statement. A legacy row keeps its
-  // NULL hash rather than being locked away from the install that owns it. A publish
-  // also revives an erased row, since only the owner can get this far.
+  // presented the service-wide token. A legacy row is bound to the hash of the token
+  // that wrote it, which is that same service-wide token, so the install keeps access and
+  // `WRITE_TOKEN` can then be rotated without locking it out. A hash is only ever set
+  // where there was none, and only to this token's, so a racing writer cannot bind the
+  // row to something else. A publish also revives an erased row, since only the owner
+  // can get this far.
   const updated = await env.DB.prepare(
-    `UPDATE config SET payload = ?, updated_at = ?, erased_at = NULL
+    `UPDATE config
+     SET payload = ?, updated_at = ?, erased_at = NULL,
+         token_hash = COALESCE(token_hash, ?)
      WHERE id = ? AND (token_hash = ? OR token_hash IS NULL)`,
   )
-    .bind(body, now, id, tokenHash)
+    .bind(body, now, tokenHash, id, tokenHash)
     .run();
   return updated.meta.changes > 0;
 }
