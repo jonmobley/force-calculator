@@ -89,7 +89,8 @@ class NFCWriter: NSObject, NFCNDEFReaderSessionDelegate {
     }
 
     private func writeMessage(to tag: NFCNDEFTag, session: NFCNDEFReaderSession) {
-        guard let payload = NFCNDEFPayload.wellKnownTypeURIPayload(url: URL(string: url)!) else {
+        guard let link = URL(string: url),
+              let payload = NFCNDEFPayload.wellKnownTypeURIPayload(url: link) else {
             session.invalidate(errorMessage: "Failed to create URL payload")
             return
         }
