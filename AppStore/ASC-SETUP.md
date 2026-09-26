@@ -23,12 +23,13 @@ Match [Force/PrivacyInfo.xcprivacy](../Force/PrivacyInfo.xcprivacy):
 | Data type | Purpose | Linked to identity | Used for tracking |
 | --- | --- | --- | --- |
 | Identifiers → User ID (random performer id the service stores settings under) | App Functionality | Yes | No |
-| Other User Content (trick settings, spectator calculation) | App Functionality | Yes | No |
+| Other User Content (trick settings) | App Functionality | Yes | No |
 
 The performer id is generated on the device and is not tied to a name, email, or device, but
-settings and peeks are stored against it, so both rows are linked. The App Clip's own manifest
-declares the spectator's calculation as not linked, because it is stored under the
-performer's id and nothing identifies the spectator.
+settings are stored against it, so both rows are linked. Live Peek is not in this release
+(`CalculatorSettings.livePeekAvailable` is false), so the App Clip collects nothing and its
+manifest declares no data types. If Live Peek returns, add the spectator's calculation back
+to Other User Content here and to the Clip manifest as not linked.
 
 No Contact Info, Location, Device ID, Purchases, Usage Data, Diagnostics, or Surroundings.
 
