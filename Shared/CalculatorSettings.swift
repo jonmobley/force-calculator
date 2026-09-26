@@ -98,6 +98,25 @@ public class CalculatorSettings: ObservableObject, Codable {
     public static let appGroup = "group.com.mobleypro.mobley.Force"
     public static let userDefaultsKey = "calculatorSettings"
 
+    // MARK: - Limits
+
+    /// Equals presses the settings screen offers. Zero or less would force on every press.
+    public static let activationCountRange = 1...10
+
+    /// Force numbers the readout can spell out without scientific notation.
+    public static let forceNumberRange =
+        0...(Int(pow(10.0, Double(CalculatorFormatter.maxDisplayDigits))) - 1)
+
+    /// Brings an activation count from a link or a fetched config into range.
+    public static func clampedActivationCount(_ count: Int) -> Int {
+        min(max(count, activationCountRange.lowerBound), activationCountRange.upperBound)
+    }
+
+    /// Brings a force number from a link or a fetched config into range.
+    public static func clampedForceNumber(_ number: Int) -> Int {
+        min(max(number, forceNumberRange.lowerBound), forceNumberRange.upperBound)
+    }
+
     enum CodingKeys: String, CodingKey {
         case theme, forceNumber, activationCount, currentCount, magicTrickMode
         case buttonTheme, openToCalculator, dateTimeFormat, startWithScreenshot
@@ -114,8 +133,10 @@ public class CalculatorSettings: ObservableObject, Codable {
     public required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         theme = try container.decode(String.self, forKey: .theme)
-        forceNumber = try container.decode(Int.self, forKey: .forceNumber)
-        activationCount = try container.decode(Int.self, forKey: .activationCount)
+        forceNumber = Self.clampedForceNumber(try container.decode(Int.self, forKey: .forceNumber))
+        activationCount = Self.clampedActivationCount(
+            try container.decode(Int.self, forKey: .activationCount)
+        )
         currentCount = try container.decode(Int.self, forKey: .currentCount)
         magicTrickMode = try container.decode(MagicTrickMode.self, forKey: .magicTrickMode)
         buttonTheme = try container.decodeIfPresent(ButtonTheme.self, forKey: .buttonTheme) ?? .orange
