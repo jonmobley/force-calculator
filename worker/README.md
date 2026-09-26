@@ -19,6 +19,7 @@ once stays correct forever.
 | ------ | ------------ | ----------------- | ----------------------------------- |
 | `GET`  | `/v1/config` | none              | Current settings, read by clip      |
 | `PUT`  | `/v1/config` | that id's token   | Replace settings, called by app     |
+| `DELETE` | `/v1/config` | that id's token | Erase settings and peeks for the id |
 | `PUT`  | `/v1/peek`   | none              | Report the spectator's number       |
 | `GET`  | `/v1/peek`   | that id's token   | Latest reported number, read by app |
 | `DELETE` | `/v1/peek` | that id's token   | Clear it between spectators         |
@@ -44,6 +45,30 @@ live peek returned whichever spectator had typed most recently regardless of who
 watching. Rows written back then have a `NULL` hash and stay on `WRITE_TOKEN`, so the
 install that owns `default` is not locked out by the upgrade.
 
+## Retention
+
+The privacy policy says settings are erased after a year without the app being opened.
+The cron (`*/5 * * * *`, the same one that prunes peeks) runs `eraseUnusedConfigs` in
+`src/retention.ts`, which erases every `config` row whose `updated_at` is older than 365
+days. The app publishes on launch and on every settings change, so `updated_at` tracks
+the last time it was opened. `DELETE /v1/config`, with the id's token, does the same
+thing immediately for one id.
+
+Erasing does not drop the row. The id is printed on the performer's QR codes and NFC
+tags, and a dropped row would return it to the unclaimed pool for whoever scanned one
+next. Instead the payload becomes `{}`, `erased_at` is set, and `token_hash` stays, so
+the id remains bound to its install. The id's `peek_entry` and `peek` rows are deleted.
+`GET /v1/config` ignores rows with `erased_at` set and answers 404 as if nothing had
+been published, `PUT /v1/peek` sees no `livePeekEnabled` and refuses, and the owner's
+next `PUT /v1/config` clears `erased_at` and brings the record back.
+
+## Rate limits
+
+`PEEK_WRITE_LIMIT` caps unauthenticated peek writes at 100 per 10 seconds per performer
+id. `CONFIG_WRITE_LIMIT` caps config writes at 30 per 60 seconds per client IP
+(`cf-connecting-ip`); it is checked before the token, so an unclaimed id, which has no
+owner to key on, still cannot be squatted in bulk. Either returns 429.
+
 ## Why D1 instead of KV
 
 KV reads are served from an edge cache that can lag a write by up to 60 seconds.
@@ -56,7 +81,9 @@ intermediary can serve an old force number.
 
 Writes are gated on the token bound to the id being written, which lives only in
 the performer's device Keychain and is stored here as a hash. `WRITE_TOKEN` remains
-only to serve the pre-existing `default` row.
+only to serve the pre-existing `default` row. Both comparisons hash the presented
+token and compare the digests in constant time, so neither the stored hash nor the
+length of `WRITE_TOKEN` can be probed through timing.
 
 Config reads are unauthenticated because the clip runs on an arbitrary spectator's
 device and has no way to hold a credential, so a payload is readable by anyone who
@@ -73,12 +100,14 @@ only the performer sees what a spectator typed.
 ```bash
 npm install
 
-# Deploy
+# Apply migrations, then deploy. Always in that order: the code assumes every
+# column its migrations add (0005 adds `erased_at`, which reads and the cron use),
+# so deploying first would 500 until the migration lands.
+npm run migrate          # remote
 npm run deploy
 
-# Apply migrations
-npm run migrate          # remote
-npm run migrate:local    # local
+# Local D1 for `wrangler dev`
+npm run migrate:local
 
 # Rotate the legacy service-wide token, which now only covers the `default` row
 npx wrangler secret put WRITE_TOKEN
@@ -95,5 +124,5 @@ npm run tail
 
 ```bash
 npx wrangler d1 execute force-config --remote \
-  --command "SELECT id, updated_at, token_hash IS NOT NULL AS claimed, payload FROM config"
+  --command "SELECT id, updated_at, erased_at, token_hash IS NOT NULL AS claimed, payload FROM config"
 ```

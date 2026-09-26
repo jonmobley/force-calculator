@@ -202,7 +202,7 @@ function privacyPolicy(): Response {
 </head>
 <body>
   <h1>Force Privacy Policy</h1>
-  <p class="meta">Last updated: September 23, 2026</p>
+  <p class="meta">Last updated: September 26, 2026</p>
 
   <p>
     Force is a calculator prop for magicians. It includes an optional App Clip that a
@@ -257,7 +257,8 @@ function privacyPolicy(): Response {
 
   <h2>Retention</h2>
   <ul>
-    <li>Settings remain until you overwrite them or we delete unused records.</li>
+    <li>Settings remain until you overwrite them, and are erased after a year without the
+      app being opened.</li>
     <li>Live Peek entries expire after about ten minutes and can be cleared sooner.</li>
   </ul>
 
