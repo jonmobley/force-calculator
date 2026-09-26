@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    name: iOS tests
+    # The project is saved by Xcode 26 (objectVersion 77, synchronized groups).
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show Xcode
+        run: xcodebuild -version
+
+      - name: Pick an iPhone simulator
+        id: simulator
+        run: |
+          udid=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          phones = [d for runtime, ds in sorted(devices.items(), reverse=True)
+                    if "iOS" in runtime for d in ds if d["name"].startswith("iPhone")]
+          print(phones[0]["udid"])
+          ')
+          echo "udid=$udid" >> "$GITHUB_OUTPUT"
+
+      # Signed ad hoc so the host app keeps its entitlements (Keychain, App Group)
+      # without the team's certificates, which CI does not have.
+      - name: Build and test
+        run: |
+          status=0
+          xcodebuild test \
+            -project Force.xcodeproj \
+            -scheme Force \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            PROVISIONING_PROFILE_SPECIFIER= \
+            > xcodebuild.log 2>&1 || status=$?
+          grep -E "error:|Test Case .* failed|Executed|\*\* " xcodebuild.log || true
+          if [ "$status" -ne 0 ]; then tail -n 150 xcodebuild.log; fi
+          exit "$status"
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: |
+            TestResults.xcresult
+            xcodebuild.log
+
+  worker:
+    name: Worker checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run check
