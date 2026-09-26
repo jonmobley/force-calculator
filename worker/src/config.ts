@@ -25,8 +25,9 @@ export interface ConfigEnv extends PeekEnv {
 
 /** Returns the published settings for an id, readable by anyone who knows the id. */
 export async function readConfig(env: ConfigEnv, id: string): Promise<Response> {
+  // An erased row still exists to hold the id, but reads as if nothing was published.
   const row = await env.DB.prepare(
-    "SELECT payload, updated_at FROM config WHERE id = ?",
+    "SELECT payload, updated_at FROM config WHERE id = ? AND erased_at IS NULL",
   )
     .bind(id)
     .first<{ payload: string; updated_at: number }>();
@@ -137,9 +138,10 @@ export async function storeConfig(
   // `matched` means the row carries this token's hash, or carries none and the request
   // presented the service-wide token. No write ever sets a hash on an existing row, so
   // neither can change between the check and this statement. A legacy row keeps its
-  // NULL hash rather than being locked away from the install that owns it.
+  // NULL hash rather than being locked away from the install that owns it. A publish
+  // also revives an erased row, since only the owner can get this far.
   const updated = await env.DB.prepare(
-    `UPDATE config SET payload = ?, updated_at = ?
+    `UPDATE config SET payload = ?, updated_at = ?, erased_at = NULL
      WHERE id = ? AND (token_hash = ? OR token_hash IS NULL)`,
   )
     .bind(body, now, id, tokenHash)

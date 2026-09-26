@@ -14,6 +14,7 @@
  *
  *   GET    /v1/config?id=<performer>  -> current settings, readable by the App Clip
  *   PUT    /v1/config?id=<performer>  -> replace settings, requires that id's token
+ *   DELETE /v1/config?id=<performer>  -> erase settings and peeks, requires that id's token
  *   PUT    /v1/peek?id=<performer>    -> report one number the spectator typed, no token
  *   GET    /v1/peek?id=<performer>    -> the calculation so far, requires that id's token
  *   DELETE /v1/peek?id=<performer>    -> clear it between spectators, requires the token
@@ -28,6 +29,10 @@
  * hash of its token, and nothing else may write or read peeks for that id afterwards.
  * Before this, every install shared the id `default` behind one service-wide token, so
  * performers overwrote each other's force numbers and could read each other's peeks.
+ *
+ * Settings the app has not published to in a year are erased by the cron, and the owner
+ * can erase them sooner. The id stays bound to its token either way, so a tag printed
+ * with it can never be claimed by someone else.
  */
 
 import { readConfig, writeConfig, type ConfigEnv } from "./config";
@@ -40,6 +45,7 @@ import {
   readPeek,
   writePeek,
 } from "./peek";
+import { eraseConfig, eraseUnusedConfigs } from "./retention";
 
 const DEFAULT_ID = "default";
 
@@ -99,6 +105,8 @@ export default {
         return readConfig(env, id);
       case "PUT":
         return writeConfig(request, env, id);
+      case "DELETE":
+        return eraseConfig(request, env, id);
       default:
         return problem(405, "Method not allowed");
     }
@@ -110,6 +118,7 @@ export default {
     _ctx: ExecutionContext,
   ): Promise<void> {
     await pruneExpiredPeeks(env);
+    await eraseUnusedConfigs(env);
   },
 } satisfies ExportedHandler<Env>;
 
