@@ -15,7 +15,7 @@ final class PeekUploaderTests: XCTestCase {
             var sent: [Sent] = []
         }
         let box = Box()
-        let uploader = PeekUploader(retryDelays: [.zero]) { value, entryID, _, _ in
+        let uploader = PeekUploader(liveRetryDelays: [.zero]) { value, entryID, _, _ in
             box.tries += 1
             if box.tries == 1 { throw URLError(.networkConnectionLost) }
             box.sent.append(Sent(value: value, entryID: entryID))
@@ -27,6 +27,47 @@ final class PeekUploaderTests: XCTestCase {
         XCTAssertEqual(box.sent, [Sent(value: "42", entryID: "e")])
     }
 
+    /// The operator-close send has no follow-up keystroke to fix a lost upload, so it
+    /// gets its own longer retry schedule: a live drop self-heals, a closed one does not.
+    func testAClosedEntryGetsMoreRetriesThanALiveOne() async {
+        final class Box: @unchecked Sendable {
+            var tries = 0
+            var sent: [Sent] = []
+        }
+        let box = Box()
+        let uploader = PeekUploader(
+            liveRetryDelays: [.zero],
+            closedRetryDelays: [.zero, .zero, .zero]
+        ) { value, entryID, _, _ in
+            box.tries += 1
+            if box.tries < 4 { throw URLError(.networkConnectionLost) }
+            box.sent.append(Sent(value: value, entryID: entryID))
+        }
+
+        await uploader.submit(value: "123", entryID: "e", op: "+", id: "p")
+
+        XCTAssertEqual(box.tries, 4, "closed entries retry up to their own longer schedule")
+        XCTAssertEqual(box.sent, [Sent(value: "123", entryID: "e")])
+    }
+
+    /// A live send that fails past its own budget must give up rather than borrowing the
+    /// closed schedule, since a next keystroke will resend anyway.
+    func testALiveEntryDoesNotUseTheClosedRetryBudget() async {
+        final class Box: @unchecked Sendable { var tries = 0 }
+        let box = Box()
+        let uploader = PeekUploader(
+            liveRetryDelays: [.zero],
+            closedRetryDelays: [.zero, .zero, .zero]
+        ) { _, _, _, _ in
+            box.tries += 1
+            throw URLError(.networkConnectionLost)
+        }
+
+        await uploader.submit(value: "42", entryID: "e", op: nil, id: "p")
+
+        XCTAssertEqual(box.tries, 2, "live retries stop after the live budget is spent")
+    }
+
     /// A request already on the wire still finishes. The replacement goes next, so
     /// the service ends on the number the spectator actually reached.
     func testANewerValueFollowsTheOneAlreadyInFlight() async {
@@ -35,7 +76,7 @@ final class PeekUploaderTests: XCTestCase {
             var sent: [String] = []
         }
         let box = Box()
-        let uploader = PeekUploader(retryDelays: []) { value, _, _, id in
+        let uploader = PeekUploader(liveRetryDelays: [], closedRetryDelays: []) { value, _, _, id in
             if value == "1" {
                 await box.uploader?.submit(value: "12", entryID: "e", op: nil, id: id)
             }
@@ -54,7 +95,7 @@ final class PeekUploaderTests: XCTestCase {
             var sent: [String] = []
         }
         let box = Box()
-        let uploader = PeekUploader(retryDelays: []) { value, _, _, id in
+        let uploader = PeekUploader(liveRetryDelays: [], closedRetryDelays: []) { value, _, _, id in
             if value == "123" {
                 await box.uploader?.submit(value: "456", entryID: "b", op: nil, id: id)
             }
@@ -74,7 +115,7 @@ final class PeekUploaderTests: XCTestCase {
             var sent: [String] = []
         }
         let box = Box()
-        let uploader = PeekUploader(retryDelays: [.zero]) { value, _, _, _ in
+        let uploader = PeekUploader(liveRetryDelays: [.zero]) { value, _, _, _ in
             if box.fail { throw URLError(.networkConnectionLost) }
             box.sent.append(value)
         }
