@@ -8,6 +8,9 @@ import ForceShared
 struct ForceTrickSection: View {
     @EnvironmentObject private var settings: CalculatorSettings
     @Binding var forceNumberText: String
+    /// Opens the saved-numbers page, which the enclosing stack owns: a destination
+    /// declared inside a Form row is ignored.
+    let onEditSavedNumbers: () -> Void
     @State private var isEditingForceNumber = false
 
     private var themeColor: Color { settings.buttonTheme.color }
@@ -42,21 +45,12 @@ struct ForceTrickSection: View {
     }
 
     private var forceNumberField: some View {
-        Button {
-            isEditingForceNumber = true
-        } label: {
-            HStack {
-                Text("Force Number")
-                    .foregroundStyle(Color.primary)
-                Spacer()
-                Text(forceNumberText.isEmpty ? "Not set" : forceNumberText)
-                    .foregroundStyle(forceNumberColor)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color(.tertiaryLabel))
-            }
-            .contentShape(Rectangle())
-        }
+        ForceNumberMenu(
+            forceNumberText: forceNumberText,
+            tint: themeColor,
+            onNewNumber: { isEditingForceNumber = true },
+            onEditList: onEditSavedNumbers
+        )
         .sheet(isPresented: $isEditingForceNumber) {
             ForceNumberEditor(
                 currentText: forceNumberText,
@@ -64,17 +58,6 @@ struct ForceTrickSection: View {
                 onCommit: updateForceNumber
             )
         }
-    }
-
-    /// Keeps the placeholder muted while a chosen number reads at full strength, in the
-    /// same theme colour the Pickers above and below use for their own values.
-    ///
-    /// Absolute colours throughout this row, never `.primary` or `.tertiary`. Those are
-    /// hierarchical styles, and inside a Button in a Form they resolve against the row's
-    /// tint rather than the label colour, which turned the whole row, title included,
-    /// theme-coloured and left it reading as if every word were the value.
-    private var forceNumberColor: Color {
-        forceNumberText.isEmpty ? Color.secondary : themeColor
     }
 
     private var dateFormatPicker: some View {

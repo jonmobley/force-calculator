@@ -9,18 +9,23 @@ struct ContentView: View {
     @EnvironmentObject private var configPublisher: ForceConfigPublisher
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var peekReader = ForcePeekReader()
+    @StateObject private var savedNumbers = SavedForceNumbers()
     @State private var forceNumberText = ""
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var backgroundImage: UIImage?
     @State private var showingCalculator = false
     @State private var showingPeekStage = false
+    @State private var showingSavedNumbers = false
 
     private var themeColor: Color { settings.buttonTheme.color }
 
     var body: some View {
         NavigationStack {
             Form {
-                ForceTrickSection(forceNumberText: $forceNumberText)
+                ForceTrickSection(
+                    forceNumberText: $forceNumberText,
+                    onEditSavedNumbers: { showingSavedNumbers = true }
+                )
                 if CalculatorSettings.livePeekAvailable {
                     trickLinks
                 }
@@ -35,6 +40,9 @@ struct ContentView: View {
                 openCalculatorBar
             }
             .navigationTitle("Force")
+            .navigationDestination(isPresented: $showingSavedNumbers) {
+                SavedForceNumbersPage()
+            }
             .navigationDestination(for: ForceSettingsPage.self) { route in
                 page(for: route)
             }
@@ -52,6 +60,7 @@ struct ContentView: View {
                 ForcePeekMonitor(reader: peekReader, showingStage: $showingPeekStage)
             }
         }
+        .environmentObject(savedNumbers)
         .fullScreenCover(isPresented: $showingCalculator) {
             CalculatorView().environmentObject(settings)
         }
@@ -169,6 +178,7 @@ struct ContentView: View {
 
     private func appear() {
         forceNumberText = String(settings.forceNumber)
+        savedNumbers.seedIfNeeded(with: settings.forceNumber)
         updatePeekReader()
         Task { await loadBackgroundImageAsync() }
     }
