@@ -11,7 +11,10 @@ struct ForceTrickSection: View {
     /// Opens the saved-numbers page, which the enclosing stack owns: a destination
     /// declared inside a Form row is ignored.
     let onEditSavedNumbers: () -> Void
+    /// Opens the saved Special Days page, owned by the enclosing stack for the same reason.
+    let onEditSavedDays: () -> Void
     @State private var isEditingForceNumber = false
+    @State private var isEditingSpecialDay = false
 
     private var themeColor: Color { settings.buttonTheme.color }
 
@@ -37,10 +40,29 @@ struct ForceTrickSection: View {
 
     @ViewBuilder
     private var trickValue: some View {
-        if settings.magicTrickMode == .forceNumber {
+        switch settings.magicTrickMode {
+        case .forceNumber:
             forceNumberField
-        } else {
+        case .exactDateTime:
             dateFormatPicker
+        case .specialDay:
+            specialDayField
+            dateFormatPicker
+        }
+    }
+
+    private var specialDayField: some View {
+        SpecialDayMenu(
+            tint: themeColor,
+            onNewDay: { isEditingSpecialDay = true },
+            onEditList: onEditSavedDays
+        )
+        .sheet(isPresented: $isEditingSpecialDay) {
+            SpecialDayEditor(
+                current: settings.specialDay,
+                format: settings.dateTimeFormat,
+                tint: themeColor
+            ) { settings.specialDay = $0 }
         }
     }
 

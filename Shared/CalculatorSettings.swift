@@ -6,6 +6,8 @@ import Combine
 public enum MagicTrickMode: String, CaseIterable, Codable {
     case forceNumber = "Force Number"
     case exactDateTime = "Date and Time"
+    /// A fixed date and time the performer picked in advance.
+    case specialDay = "Special Day"
 }
 
 /// Operator-key colors for the host and the App Clip.
@@ -84,6 +86,8 @@ public class CalculatorSettings: ObservableObject, Codable {
     @Published public var buttonTheme: ButtonTheme = .orange
     @Published public var openToCalculator: Bool = false
     @Published public var dateTimeFormat: DateTimeFormat = .mmDDYY
+    /// What Special Day mode reveals, formatted with `dateTimeFormat`.
+    @Published public var specialDay: SpecialDay = .defaultDay()
     @Published public var perfectPlusEnabled: Bool = false
     /// Whether Perfect Plus buzzes when the turn arms it and when the number is staged.
     /// On by default, because the buzz is how the performer knows the phone can come back.
@@ -126,7 +130,7 @@ public class CalculatorSettings: ObservableObject, Codable {
     enum CodingKeys: String, CodingKey {
         case theme, forceNumber, activationCount, currentCount, magicTrickMode
         case buttonTheme, openToCalculator, dateTimeFormat, startWithScreenshot
-        case livePeekEnabled
+        case livePeekEnabled, specialDay
         // The trick was called Plus Perfect when these were written. Renaming the stored
         // keys would read as absent and quietly turn the trick off, both in the record
         // already saved on the performer's phone and in the settings the clip fetches.
@@ -148,6 +152,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         buttonTheme = try container.decodeIfPresent(ButtonTheme.self, forKey: .buttonTheme) ?? .orange
         openToCalculator = try container.decodeIfPresent(Bool.self, forKey: .openToCalculator) ?? false
         dateTimeFormat = try container.decodeIfPresent(DateTimeFormat.self, forKey: .dateTimeFormat) ?? .mmDDYY
+        specialDay = try container.decodeIfPresent(SpecialDay.self, forKey: .specialDay) ?? .defaultDay()
         perfectPlusEnabled = try container.decodeIfPresent(Bool.self, forKey: .perfectPlusEnabled) ?? false
         perfectPlusHapticsEnabled = try container
             .decodeIfPresent(Bool.self, forKey: .perfectPlusHapticsEnabled) ?? true
@@ -166,6 +171,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         try container.encode(buttonTheme, forKey: .buttonTheme)
         try container.encode(openToCalculator, forKey: .openToCalculator)
         try container.encode(dateTimeFormat, forKey: .dateTimeFormat)
+        try container.encode(specialDay, forKey: .specialDay)
         try container.encode(perfectPlusEnabled, forKey: .perfectPlusEnabled)
         try container.encode(perfectPlusHapticsEnabled, forKey: .perfectPlusHapticsEnabled)
         try container.encode(startWithScreenshot, forKey: .startWithScreenshot)
@@ -186,6 +192,7 @@ public class CalculatorSettings: ObservableObject, Codable {
         buttonTheme = stored.buttonTheme
         openToCalculator = stored.openToCalculator
         dateTimeFormat = stored.dateTimeFormat
+        specialDay = stored.specialDay
         perfectPlusEnabled = stored.perfectPlusEnabled
         perfectPlusHapticsEnabled = stored.perfectPlusHapticsEnabled
         startWithScreenshot = stored.startWithScreenshot
@@ -271,11 +278,15 @@ public class CalculatorSettings: ObservableObject, Codable {
     }
 
     /// The number the equals key will land on in the current mode: the stored force
-    /// number, or whatever the clock reads right now in Date and Time mode. Defined once
-    /// here because several places need the same answer and a third mode would otherwise
-    /// have to be added to each of them.
+    /// number, whatever the clock reads right now in Date and Time mode, or the preset
+    /// moment in Special Day mode. Defined once here because several places need the
+    /// same answer and each new mode would otherwise have to be added to all of them.
     public var forcedNumber: Int {
-        magicTrickMode == .forceNumber ? forceNumber : getCurrentDateTimeNumber()
+        switch magicTrickMode {
+        case .forceNumber: return forceNumber
+        case .exactDateTime: return getCurrentDateTimeNumber()
+        case .specialDay: return DateTimeNumber.format(specialDay, format: dateTimeFormat)
+        }
     }
 
     private func persistedDefaults() -> UserDefaults {

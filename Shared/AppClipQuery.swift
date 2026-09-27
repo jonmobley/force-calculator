@@ -11,6 +11,7 @@ public struct AppClipQuery: Equatable {
     public var activationCount: Int
     public var magicTrickMode: MagicTrickMode
     public var dateTimeFormat: DateTimeFormat
+    public var specialDay: SpecialDay
     public var buttonTheme: ButtonTheme
     public var perfectPlusEnabled: Bool
     public var perfectPlusHapticsEnabled: Bool
@@ -22,6 +23,7 @@ public struct AppClipQuery: Equatable {
         activationCount = settings.activationCount
         magicTrickMode = settings.magicTrickMode
         dateTimeFormat = settings.dateTimeFormat
+        specialDay = settings.specialDay
         buttonTheme = settings.buttonTheme
         perfectPlusEnabled = settings.perfectPlusEnabled
         perfectPlusHapticsEnabled = settings.perfectPlusHapticsEnabled
@@ -47,8 +49,9 @@ public struct AppClipQuery: Equatable {
         return components.url!
     }
 
-    /// Builds `https://appclip.apple.com/id` with `p`, `fn`, `ac`, `mt`, `dt`, `bt`, `pp`,
-    /// `pph`, `sws`, and `pk`.
+    /// Builds `https://appclip.apple.com/id` with `p`, `fn`, `ac`, `mt`, `dt`, `sd`, `bt`,
+    /// `pp`, `pph`, `sws`, and `pk`. Saved Special Day presets stay off the URL; only the
+    /// chosen day travels.
     ///
     /// Retained so stickers written before the config service existed keep
     /// working: the clip still reads these parameters, then overrides them with
@@ -61,6 +64,7 @@ public struct AppClipQuery: Equatable {
             URLQueryItem(name: "ac", value: String(activationCount)),
             URLQueryItem(name: "mt", value: magicTrickMode.rawValue),
             URLQueryItem(name: "dt", value: dateTimeFormat.rawValue),
+            URLQueryItem(name: "sd", value: specialDay.compactValue),
             URLQueryItem(name: "bt", value: buttonTheme.rawValue),
             URLQueryItem(name: "pp", value: String(perfectPlusEnabled)),
             URLQueryItem(name: "pph", value: String(perfectPlusHapticsEnabled)),
@@ -131,6 +135,9 @@ public struct AppClipQuery: Equatable {
     private static func applyFormat(_ items: [URLQueryItem], to settings: CalculatorSettings) {
         if let raw = value("dt", in: items), let format = DateTimeFormat(rawValue: raw) {
             settings.dateTimeFormat = format
+        }
+        if let raw = value("sd", in: items), let day = SpecialDay(compactValue: raw) {
+            settings.specialDay = day
         }
     }
 

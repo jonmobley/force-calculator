@@ -165,6 +165,19 @@ final class CalculatorSessionTests: XCTestCase {
         XCTAssertFalse(session.showModeText)
     }
 
+    // MARK: - Mode switching
+
+    /// The covert mode button steps through every mode and wraps back to the first.
+    func testModeButtonCyclesThroughEveryMode() {
+        let (session, _) = makeSession()
+        session.toggleMode()
+        XCTAssertEqual(session.modeName, MagicTrickMode.exactDateTime.rawValue)
+        session.toggleMode()
+        XCTAssertEqual(session.modeName, MagicTrickMode.specialDay.rawValue)
+        session.toggleMode()
+        XCTAssertEqual(session.modeName, MagicTrickMode.forceNumber.rawValue)
+    }
+
     // MARK: - Helpers
 
     /// One delivered peek entry, as the recorder would store it.

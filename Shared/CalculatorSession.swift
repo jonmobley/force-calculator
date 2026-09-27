@@ -268,12 +268,14 @@ public final class CalculatorSession: ObservableObject {
         quickForce.toggle()
     }
 
-    /// Changes Force versus Date/Time for this session only. On the clip, the
-    /// performer's published settings are untouched; on the host the local settings
-    /// take the change and autosave picks it up.
+    /// Steps to the next trick mode (Force, Date/Time, Special Day, then round again)
+    /// for this session only. On the clip, the performer's published settings are
+    /// untouched; on the host the local settings take the change and autosave picks it up.
     public func toggleMode() {
         if perfectPlusHoldsTheKeys { return }
-        settings.magicTrickMode = settings.magicTrickMode == .forceNumber ? .exactDateTime : .forceNumber
+        let modes = MagicTrickMode.allCases
+        let index = modes.firstIndex(of: settings.magicTrickMode) ?? 0
+        settings.magicTrickMode = modes[(index + 1) % modes.count]
         scheduleModeHide()
         debugLog("🔄 Mode toggled to: \(settings.magicTrickMode)")
     }
