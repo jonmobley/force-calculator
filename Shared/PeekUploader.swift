@@ -22,21 +22,31 @@ public actor PeekUploader {
     }
 
     private let send: Send
-    /// One delay per retry. The first attempt happens immediately.
-    private let retryDelays: [Duration]
+    /// One delay per retry for a still-live entry. The first attempt happens immediately.
+    private let liveRetryDelays: [Duration]
+    /// One delay per retry for an entry that carries the operator that ended it. Longer
+    /// than the live schedule because a closed entry has no follow-up keystroke to correct
+    /// it: if this send is lost, the performer never sees the operator symbol.
+    private let closedRetryDelays: [Duration]
     private var order: [String] = []
     private var latest: [String: Item] = [:]
     private var generations: [String: Int] = [:]
     private var draining = false
 
     /// - Parameters:
-    ///   - retryDelays: Pause before each retry. Empty means a failure is dropped.
+    ///   - liveRetryDelays: Pauses before retries for a still-typing entry. A dropped
+    ///     digit is picked up by the next keystroke, so a light schedule is enough.
+    ///   - closedRetryDelays: Pauses before retries for an entry the spectator has ended
+    ///     with an operator. Longer than live because there is no next keystroke to fix a
+    ///     drop, and losing the send means the performer reads `123` instead of `123 +`.
     ///   - send: The upload. Tests pass one that records calls and throws on demand.
     public init(
-        retryDelays: [Duration] = [.milliseconds(400)],
+        liveRetryDelays: [Duration] = [.milliseconds(400)],
+        closedRetryDelays: [Duration] = [.milliseconds(400), .seconds(1), .seconds(3)],
         send: @escaping Send
     ) {
-        self.retryDelays = retryDelays
+        self.liveRetryDelays = liveRetryDelays
+        self.closedRetryDelays = closedRetryDelays
         self.send = send
     }
 
@@ -78,11 +88,12 @@ public actor PeekUploader {
                 return
             }
             guard latest[entryID]?.generation == item.generation else { continue }
-            guard attempt < retryDelays.count else {
+            let delays = item.op == nil ? liveRetryDelays : closedRetryDelays
+            guard attempt < delays.count else {
                 finish(entryID)
                 return
             }
-            try? await Task.sleep(for: retryDelays[attempt])
+            try? await Task.sleep(for: delays[attempt])
             attempt += 1
         }
         finish(entryID)

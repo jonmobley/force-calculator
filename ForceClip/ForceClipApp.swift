@@ -117,11 +117,15 @@ final class ClipSession: ObservableObject {
     }
 
     private func refreshPeekUntilCancelled(into settings: CalculatorSettings) async {
+        // Fetch first, then sleep, so every calculator appearance or foregrounding
+        // catches a switch the performer has just toggled — the poll cadence closes the
+        // in-session window, and this immediate read closes the first-open one.
         while !Task.isCancelled {
+            if hasFetched {
+                await refreshPeekSetting(into: settings)
+                if Task.isCancelled { return }
+            }
             try? await Task.sleep(for: Self.peekRefreshInterval)
-            if Task.isCancelled { return }
-            guard hasFetched else { continue }
-            await refreshPeekSetting(into: settings)
         }
     }
 

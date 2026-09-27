@@ -10,12 +10,14 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var peekReader = ForcePeekReader()
     @StateObject private var savedNumbers = SavedForceNumbers()
+    @StateObject private var savedDays = SavedSpecialDays()
     @State private var forceNumberText = ""
     @State private var selectedPhotoItem: PhotosPickerItem?
     @State private var backgroundImage: UIImage?
     @State private var showingCalculator = false
     @State private var showingPeekStage = false
     @State private var showingSavedNumbers = false
+    @State private var showingSavedDays = false
 
     private var themeColor: Color { settings.buttonTheme.color }
 
@@ -24,7 +26,8 @@ struct ContentView: View {
             Form {
                 ForceTrickSection(
                     forceNumberText: $forceNumberText,
-                    onEditSavedNumbers: { showingSavedNumbers = true }
+                    onEditSavedNumbers: { showingSavedNumbers = true },
+                    onEditSavedDays: { showingSavedDays = true }
                 )
                 if CalculatorSettings.livePeekAvailable {
                     trickLinks
@@ -42,6 +45,9 @@ struct ContentView: View {
             .navigationTitle("Force")
             .navigationDestination(isPresented: $showingSavedNumbers) {
                 SavedForceNumbersPage()
+            }
+            .navigationDestination(isPresented: $showingSavedDays) {
+                SavedSpecialDaysPage()
             }
             .navigationDestination(for: ForceSettingsPage.self) { route in
                 page(for: route)
@@ -61,6 +67,7 @@ struct ContentView: View {
             }
         }
         .environmentObject(savedNumbers)
+        .environmentObject(savedDays)
         .fullScreenCover(isPresented: $showingCalculator) {
             CalculatorView().environmentObject(settings)
         }

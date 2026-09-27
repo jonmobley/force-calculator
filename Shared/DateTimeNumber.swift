@@ -22,7 +22,24 @@ public enum DateTimeNumber {
         format: DateTimeFormat,
         calendar: Calendar = .current
     ) -> Int {
-        let parts = pieces(of: date, calendar: calendar)
+        digits(pieces(of: date, calendar: calendar), format: format)
+    }
+
+    /// Formats a preset `SpecialDay` with the same rules as `format(_:format:calendar:)`.
+    public static func format(_ specialDay: SpecialDay, format: DateTimeFormat) -> Int {
+        let parts = Pieces(
+            month: specialDay.month,
+            day: specialDay.day,
+            year: specialDay.year % 100,
+            hour12: hour12(specialDay.hour),
+            minute: specialDay.minute
+        )
+        return digits(parts, format: format)
+    }
+
+    // MARK: - Formatting
+
+    private static func digits(_ parts: Pieces, format: DateTimeFormat) -> Int {
         let month = String(format: "%02d", parts.month)
         let day = String(format: "%02d", parts.day)
         let year = String(format: "%02d", parts.year)
@@ -39,8 +56,6 @@ public enum DateTimeNumber {
         return Int(raw) ?? 0
     }
 
-    // MARK: - Formatting
-
     private struct Pieces {
         var month: Int
         var day: Int
@@ -51,14 +66,16 @@ public enum DateTimeNumber {
 
     private static func pieces(of date: Date, calendar: Calendar) -> Pieces {
         let components = calendar.dateComponents([.month, .day, .year, .hour, .minute], from: date)
-        let hour24 = components.hour ?? 0
-        let hour12 = hour24 % 12 == 0 ? 12 : hour24 % 12
         return Pieces(
             month: components.month ?? 1,
             day: components.day ?? 1,
             year: (components.year ?? 0) % 100,
-            hour12: hour12,
+            hour12: hour12(components.hour ?? 0),
             minute: components.minute ?? 0
         )
+    }
+
+    private static func hour12(_ hour24: Int) -> Int {
+        hour24 % 12 == 0 ? 12 : hour24 % 12
     }
 }

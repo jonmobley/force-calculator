@@ -15,14 +15,17 @@ public class PerfectPlusHandler: ObservableObject {
     @Published public var mode: PerfectPlusState = .inactive
     public var savedNumber: Double = 0
 
-    /// How long the phone must go untouched, once armed, before the addend is staged.
+    /// How long the phone must go untouched after the last screen tap, once armed, before
+    /// the addend is staged.
     ///
     /// The number used to wait for the phone to be turned back, which left a visible pause
     /// between the turn and the number landing. Staging it while the screen is still hidden
     /// means the display is already right the moment the phone comes over. Touches are what
     /// the wait watches: a hand wrapped round the glass is exactly where stray presses land,
     /// and each one starts the wait again, so nothing is staged while the phone is still
-    /// being handled.
+    /// being handled. The wait only starts on the first tap, so a phone lying face down and
+    /// untouched never stages on its own — the buzz would give the trick away with no one
+    /// there to feel it having done any work.
     public static let idleRevealDelay: TimeInterval = 1
 
     /// 10Hz is far quicker than a phone can be turned over and costs little.
@@ -77,8 +80,8 @@ public class PerfectPlusHandler: ObservableObject {
     public init() {}
 
     /// Starts watching the phone's attitude. `handler` runs when the addend should go on the
-    /// display, which is once the armed phone has been left alone for `idleRevealDelay`, or
-    /// on the way back if it is turned over again before then.
+    /// display, which is once the armed phone has been tapped and then left alone for
+    /// `idleRevealDelay`, or on the way back if it is turned over again before then.
     public func startMonitoring(hapticsEnabled: Bool, handler: @escaping () -> Void) {
         guard !isMonitoring else {
             debugLog("🎭 Perfect Plus: monitoring already running")
@@ -308,7 +311,6 @@ public class PerfectPlusHandler: ObservableObject {
         phoneIsTurned = true
         debugLog("🎭 Perfect Plus: armed by \(trigger) holding \(savedNumber)")
         haptics.playArmed()
-        scheduleIdleReveal()
     }
 
     // MARK: - Staging the reveal

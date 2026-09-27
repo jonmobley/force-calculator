@@ -182,15 +182,14 @@ public struct CalculatorReadout: View {
             .calculatorKeySurface(fill: fill)
     }
 
+    /// One badge, two triggers. The equals long-press holds it up while the finger is
+    /// down; the mode button and the readout long-press schedule an auto-hide. Both
+    /// render the same pill so the performer never sees two different peeks of the
+    /// same information.
     private var trailingStatus: some View {
         VStack(alignment: .trailing, spacing: 6) {
             modeButton
-            if showForceNumber {
-                Text(forcedNumberText)
-                    .font(.system(size: 16))
-                    .foregroundColor(Color.gray.opacity(0.7))
-                    .monospacedDigit()
-            } else if showModeText {
+            if showForceNumber || showModeText {
                 modeBadge
             }
         }

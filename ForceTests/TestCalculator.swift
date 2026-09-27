@@ -1,108 +1,73 @@
 import XCTest
 import ForceShared
 
-/// Holds the session the two `CalculatorView`s keep in `@State`, so a test can press keys
-/// through the same shared handling the app and the App Clip use.
+/// Drives the shared `CalculatorSession` the way both `CalculatorView`s do, so a test
+/// presses keys through exactly the same handler the host and the App Clip use.
 ///
-/// The thin glue each view wraps around `CalculatorOperations` is mirrored here rather than
-/// reached into, because that glue is where a key press decides whether it belongs to the
-/// calculator or to one of the tricks.
+/// The wrapper stays deliberately thin. Everything a key press actually decides —
+/// digit routing through the clock sequence, Perfect Plus lockouts, C/AC swapping —
+/// lives in `CalculatorSession`, and this file only translates test names into the
+/// same calls the views make.
 final class TestCalculator {
-    private var calc = CalculatorState()
+    private let session: CalculatorSession
+    private let settings: CalculatorSettings
 
-    private let settings = CalculatorSettings()
-    private let perfectPlusHandler = PerfectPlusHandler()
-    private let quickForce = QuickForceEntry()
-
-    var display: String { calc.display }
-    var expressionDisplay: String { calc.expressionDisplay }
-    var perfectPlusMode: PerfectPlusState { perfectPlusHandler.mode }
-    var quickEntryStage: QuickForceEntry.Stage { quickForce.stage }
+    var display: String { session.calc.display }
+    var expressionDisplay: String { session.calc.expressionDisplay }
+    var perfectPlusMode: PerfectPlusState { session.perfectPlusHandler.mode }
+    var quickEntryStage: QuickForceEntry.Stage { session.quickForce.stage }
 
     /// What the next equals press would force, resolved the way the views resolve it.
-    var force: ForceValues { quickForce.values(settings: settings) }
+    var force: ForceValues { session.force }
 
     init(forceNumber: Int, activationCount: Int, perfectPlusEnabled: Bool = true) {
+        let settings = CalculatorSettings()
         settings.forceNumber = forceNumber
         settings.activationCount = activationCount
         settings.magicTrickMode = .forceNumber
         settings.perfectPlusEnabled = perfectPlusEnabled
+        self.settings = settings
+        self.session = CalculatorSession(settings: settings)
     }
 
     /// Stands in for sums the spectator has already done, each of which moves the calculator
     /// one press closer to the activation count.
     func bankEqualsPresses(_ count: Int) {
-        calc.forceCount = count
+        session.calc.forceCount = count
     }
 
     // MARK: - Keys
 
     func type(_ digits: String) {
         for digit in digits.map(String.init) {
-            digitPressed(digit)
+            session.digitPressed(digit)
         }
-    }
-
-    private func digitPressed(_ digit: String) {
-        if quickForce.consumeDigit(digit) {
-            if !quickForce.isArmed { resetEntry() }
-            return
-        }
-        CalculatorOperations.digitPressed(
-            digit,
-            state: &calc,
-            perfectPlusMode: perfectPlusHandler.mode
-        )
     }
 
     func press(_ op: CalculatorOperation) {
-        if op != .percent,
-           CalculatorOperations.shouldFinishPendingSum(calc, perfectPlusMode: perfectPlusHandler.mode) {
-            equals()
-        }
-        CalculatorOperations.performOperation(
-            op,
-            state: &calc,
-            settings: settings,
-            perfectPlusHandler: perfectPlusHandler
-        )
+        session.performOperation(op)
     }
 
     func backspace() {
-        CalculatorOperations.backspace(
-            state: &calc,
-            perfectPlusMode: perfectPlusHandler.mode
-        )
+        session.backspace()
     }
 
     func equals() {
-        if quickForce.consumeEquals(display: calc.display) { return }
-        CalculatorOperations.equals(
-            state: &calc,
-            force: force,
-            countActivation: quickForce.countsActivation(settings: settings),
-            perfectPlusHandler: perfectPlusHandler
-        )
+        session.equals()
     }
 
     func clearAll() {
-        quickForce.cancel()
-        resetEntry()
+        session.clear()
     }
 
     /// Mirrors a tap on the clock control in the readout.
     func tapClock() {
-        resetEntry()
-        quickForce.toggle()
+        session.toggleQuickEntry()
     }
 
     /// Mirrors the calculator being closed, which is what ends a session override.
     func close() {
-        quickForce.reset()
-    }
-
-    private func resetEntry() {
-        CalculatorOperations.clearAll(state: &calc, perfectPlusHandler: perfectPlusHandler)
+        session.onDisappear()
     }
 
     // MARK: - Perfect Plus
@@ -118,7 +83,7 @@ final class TestCalculator {
 
     /// Stands in for the motion callback that fires when the phone comes back upright.
     func turnPhoneOverAndBack() {
-        perfectPlusHandler.calculatePerfectAddend(state: &calc, force: force)
+        session.revealPerfectPlusAddend()
     }
 
     /// Stands in for the phone being turned over and then left alone: the number goes up
@@ -126,12 +91,12 @@ final class TestCalculator {
     func stageTheNumberBehindTheTurn(savedNumber: Int) {
         type(String(savedNumber))
         press(.add)
-        perfectPlusHandler.calculatePerfectAddend(state: &calc, force: force)
-        perfectPlusHandler.mode = .staged
+        session.revealPerfectPlusAddend()
+        session.perfectPlusHandler.mode = .staged
     }
 
     /// Stands in for the turn back, which once the number is staged only hands the keys over.
     func turnPhoneBack() {
-        perfectPlusHandler.mode = .calculated
+        session.perfectPlusHandler.mode = .calculated
     }
 }

@@ -1,6 +1,9 @@
 import SwiftUI
 
-/// Equals key that peeks the force number on a long press and calculates on a short tap.
+/// Equals key that peeks the mode badge on a long press and calculates on a short tap.
+///
+/// The peek shows the same pill the mode button reveals — current mode and the number
+/// equals will land on — so the two ways of checking the trick agree.
 ///
 /// One gesture drives both, rather than a `Button` with a press gesture alongside it. The
 /// button fired on every release, so a long press that only meant to glance at the force
