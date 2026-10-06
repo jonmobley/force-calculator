@@ -66,11 +66,11 @@ export default {
     }
 
     if (url.pathname === "/privacy" || url.pathname === "/privacy/") {
-      return privacyPolicy();
+      return movedTo("https://moxieapps.io/force/privacy");
     }
 
     if (url.pathname === "/support" || url.pathname === "/support/") {
-      return supportPage();
+      return movedTo("https://moxieapps.io/force/support");
     }
 
     if (url.pathname !== "/v1/config" && url.pathname !== "/v1/peek") {
@@ -151,8 +151,8 @@ function homePage(): Response {
     you set in advance. Share it with a spectator via QR or NFC App Clip.
   </p>
   <ul>
-    <li><a href="/support">Support</a></li>
-    <li><a href="/privacy">Privacy policy</a></li>
+    <li><a href="https://moxieapps.io/force/support">Support</a></li>
+    <li><a href="https://moxieapps.io/force/privacy">Privacy policy</a></li>
   </ul>
 </body>
 </html>`;
@@ -166,171 +166,8 @@ function homePage(): Response {
   });
 }
 
-/** Public privacy policy for App Store Connect. HTML so a browser can open it. */
-function privacyPolicy(): Response {
-  const body = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Force — Privacy Policy</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      line-height: 1.5;
-      max-width: 40rem;
-      margin: 2rem auto;
-      padding: 0 1.25rem;
-      color: #111;
-    }
-    @media (prefers-color-scheme: dark) {
-      body { color: #eee; }
-    }
-    h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
-    h2 { font-size: 1.15rem; margin-top: 1.75rem; }
-    .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
-    @media (prefers-color-scheme: dark) { .meta { color: #aaa; } }
-    ul { padding-left: 1.25rem; }
-  </style>
-</head>
-<body>
-  <h1>Force Privacy Policy</h1>
-  <p class="meta">Last updated: September 26, 2026</p>
-
-  <p>
-    Force is a calculator prop for magicians. It includes an optional App Clip that a
-    spectator opens from a QR code or NFC sticker. This policy covers the iOS app, the
-    App Clip, and the configuration service they talk to.
-  </p>
-
-  <h2>What we collect</h2>
-  <p>Force does not create accounts and does not ask for your name, email, or phone number.</p>
-  <ul>
-    <li>
-      <strong>Performer settings.</strong> When you change your force number or related
-      options, the app may upload those settings to our configuration service so a printed
-      QR code or NFC sticker keeps working after you edit them. Settings are numbers and
-      toggles only.
-    </li>
-    <li>
-      <strong>Install identifiers.</strong> Each install generates a random performer id
-      and a random write token on the device. Neither is derived from your Apple ID,
-      device serial, advertising identifier, or other personal data.
-    </li>
-  </ul>
-
-  <h2>What we do not collect</h2>
-  <ul>
-    <li>Analytics, crash reports, or advertising identifiers</li>
-    <li>Location, contacts, photos (except a screenshot you optionally choose yourself
-      for the “Start with Screenshot” launch screen, which stays on your device)</li>
-    <li>Data from third-party SDKs — Force ships with none</li>
-  </ul>
-
-  <h2>How data is used</h2>
-  <p>
-    Settings exist only so the trick works across your phone and a spectator’s App Clip.
-    The App Clip reads them and sends nothing about what a spectator types. We do not sell data, use it for advertising, or combine it with
-    other sources to identify a person.
-  </p>
-
-  <h2>Where data is stored</h2>
-  <p>
-    Settings are stored on a Cloudflare Worker and D1 database under our control. Tokens
-    never leave the performer’s Keychain except as a bearer credential when the app
-    publishes settings.
-  </p>
-
-  <h2>Retention</h2>
-  <p>
-    Settings remain until you overwrite them, and are erased after a year without the app
-    being opened.
-  </p>
-
-  <h2>Children</h2>
-  <p>Force is not directed at children under 13, and we do not knowingly collect data from them.</p>
-
-  <h2>Contact</h2>
-  <p>
-    Questions about this policy: Jonathan Mobley —
-    <a href="mailto:jon.mobley@me.com">jon.mobley@me.com</a>
-  </p>
-</body>
-</html>`;
-
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=300",
-    },
-  });
-}
-
-/** Support page required by App Store Connect (Guideline 1.5). */
-function supportPage(): Response {
-  const body = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Force — Support</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      line-height: 1.5;
-      max-width: 40rem;
-      margin: 2rem auto;
-      padding: 0 1.25rem;
-      color: #111;
-    }
-    @media (prefers-color-scheme: dark) { body { color: #eee; } }
-    h1 { font-size: 1.6rem; margin-bottom: 0.25rem; }
-    h2 { font-size: 1.15rem; margin-top: 1.75rem; }
-    .meta { color: #666; font-size: 0.9rem; margin-bottom: 1.5rem; }
-    @media (prefers-color-scheme: dark) { .meta { color: #aaa; } }
-    ul { padding-left: 1.25rem; }
-  </style>
-</head>
-<body>
-  <h1>Force Support</h1>
-  <p class="meta">Force Calculator Magic — help for performers</p>
-
-  <p>
-    Force is a calculator prop for magicians. If something is not working during a
-    show or while setting up QR / NFC sharing, email and we will help you sort it out.
-  </p>
-
-  <h2>Contact</h2>
-  <p>
-    Jonathan Mobley —
-    <a href="mailto:jonmobley@gmail.com">jonmobley@gmail.com</a>
-  </p>
-
-  <h2>Common topics</h2>
-  <ul>
-    <li>App Clip QR code or NFC sticker not opening the spectator calculator</li>
-    <li>Settings not updating for spectators after you change the force number</li>
-    <li>Perfect Plus / face-down behavior</li>
-  </ul>
-
-  <h2>Privacy</h2>
-  <p>
-    See the
-    <a href="/privacy">privacy policy</a>
-    for what the app sends over the network.
-  </p>
-</body>
-</html>`;
-
-  return new Response(body, {
-    status: 200,
-    headers: {
-      "content-type": "text/html; charset=utf-8",
-      "cache-control": "public, max-age=300",
-    },
-  });
+/** The human pages now live on the Moxie site; keep the old URLs working. */
+function movedTo(location: string): Response {
+  return new Response(null, { status: 301, headers: { location } });
 }
 

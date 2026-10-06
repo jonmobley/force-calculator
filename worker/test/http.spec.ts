@@ -26,8 +26,21 @@ describe("CORS", () => {
   });
 
   it("leaves the public pages without CORS headers too", async () => {
-    const response = await worker.fetch(new Request(`${ORIGIN}/privacy`), env);
+    const response = await worker.fetch(new Request(`${ORIGIN}/health`), env);
     expect(response.status).toBe(200);
     expect(response.headers.get("access-control-allow-origin")).toBeNull();
+  });
+
+  it("redirects the human pages to the Moxie site", async () => {
+    for (const [path, target] of [
+      ["/privacy", "https://moxieapps.io/force/privacy"],
+      ["/privacy/", "https://moxieapps.io/force/privacy"],
+      ["/support", "https://moxieapps.io/force/support"],
+      ["/support/", "https://moxieapps.io/force/support"],
+    ]) {
+      const response = await worker.fetch(new Request(`${ORIGIN}${path}`), env);
+      expect(response.status).toBe(301);
+      expect(response.headers.get("location")).toBe(target);
+    }
   });
 });

@@ -1,6 +1,6 @@
 # App Store Connect setup checklist
 
-Privacy policy (live): https://forcemagic.app/privacy
+Privacy policy (live): https://moxieapps.io/force/privacy
 
 ## App record
 
@@ -11,8 +11,8 @@ Privacy policy (live): https://forcemagic.app/privacy
 | SKU | force-calculator |
 | Primary language | English (U.S.) |
 | Category | Entertainment |
-| Privacy Policy URL | https://forcemagic.app/privacy |
-| Support URL | https://forcemagic.app/support |
+| Privacy Policy URL | https://moxieapps.io/force/privacy |
+| Support URL | https://moxieapps.io/force/support |
 
 Copy description, keywords, and promo text from [LISTING.md](LISTING.md).
 
@@ -54,7 +54,7 @@ Upload from `Screenshots/iPhone-6.9/` (1320×2868, no alpha):
 ## App Review
 
 Paste [REVIEW-NOTES.md](REVIEW-NOTES.md) into App Review Information → Notes.
-Attach a performance video. Contact: jonmobley@gmail.com
+Attach a performance video. Contact: hello@moxieapps.io
 
 ## Product decisions already made
 
