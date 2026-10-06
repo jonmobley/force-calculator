@@ -45,8 +45,10 @@ final class EarpieceVoice: NSObject, ObservableObject {
     static let availableVoices: [AVSpeechSynthesisVoice] = {
         let language = AVSpeechSynthesisVoice.currentLanguageCode()
         let prefix = String(language.prefix(2))
-        let voices = AVSpeechSynthesisVoice.speechVoices().filter {
-            !$0.voiceTraits.contains(.isNoveltyVoice) && $0.language.hasPrefix(prefix)
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { voice in
+            guard voice.language.hasPrefix(prefix) else { return false }
+            if #available(iOS 17.0, *) { return !voice.voiceTraits.contains(.isNoveltyVoice) }
+            return true
         }
         return voices.sorted {
             if ($0.language == language) != ($1.language == language) { return $0.language == language }
