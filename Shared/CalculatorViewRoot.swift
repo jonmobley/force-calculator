@@ -32,6 +32,8 @@ public struct CalculatorViewRoot: View {
     ///     and calls this on tap. Nil hides the control (clip's case). The shared
     ///     view wraps the closure to swallow presses while Perfect Plus holds the
     ///     keys, so a spectator's stray tap cannot leave the calculator.
+    ///   - onSpectatorEntry: Optional. The host passes one so the earpiece voice can
+    ///     say each number the spectator finishes; the clip leaves it nil.
     ///   - demoRequested: Debug-only opt-in from the clip's `demo=peek` invocation
     ///     URL. When true and live peek is on, types a short sum once so hardware
     ///     verification of the peek pipe does not need fingers. Ignored in Release.
@@ -39,14 +41,15 @@ public struct CalculatorViewRoot: View {
         settings: CalculatorSettings,
         peekReporter: PeekReporter? = nil,
         onDismiss: (() -> Void)? = nil,
+        onSpectatorEntry: ((SpectatorEntry) -> Void)? = nil,
         demoRequested: Bool = false
     ) {
         self.settings = settings
         self.onDismiss = onDismiss
         self.demoRequested = demoRequested
-        _session = StateObject(
-            wrappedValue: CalculatorSession(settings: settings, peekReporter: peekReporter)
-        )
+        let session = CalculatorSession(settings: settings, peekReporter: peekReporter)
+        session.onSpectatorEntry = onSpectatorEntry
+        _session = StateObject(wrappedValue: session)
     }
 
     public var body: some View {

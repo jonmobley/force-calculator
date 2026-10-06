@@ -13,9 +13,11 @@ struct ForcePeekMonitor: View {
 
     @AppStorage("livePeekAutoHaptics") private var autoHaptics = false
     @AppStorage("livePeekAutoStage") private var autoStage = false
+    @AppStorage(EarpiecePrefs.livePeekKey) private var autoSpeak = true
     @StateObject private var haptics = PeekHaptics()
     @State private var lastAutoPlayed: String?
     @State private var lastAutoStaged: String?
+    @State private var lastAutoSpoken: String?
 
     var body: some View {
         Color.clear
@@ -31,8 +33,9 @@ struct ForcePeekMonitor: View {
             .onDisappear { haptics.cancel() }
     }
 
-    /// Buzzes and/or opens the big display the first time a value settles, and
-    /// rearms both once the readout goes quiet so the next arrival is fresh.
+    /// Buzzes, speaks in the earpiece and/or opens the big display the first time a
+    /// value settles, and rearms them once the readout goes quiet so the next arrival
+    /// is fresh.
     private func handleStateChange(_ state: ForcePeekReader.State) {
         guard case .value(let peek) = state, let latest = peek.latest else {
             clearMemory()
@@ -41,6 +44,10 @@ struct ForcePeekMonitor: View {
         if autoHaptics, latest.value != lastAutoPlayed {
             lastAutoPlayed = latest.value
             haptics.play(latest.value)
+        }
+        if autoSpeak, EarpiecePrefs.enabled, latest.value != lastAutoSpoken {
+            lastAutoSpoken = latest.value
+            EarpiecePrefs.speak(number: latest.value)
         }
         if autoStage, !showingStage, latest.value != lastAutoStaged {
             lastAutoStaged = latest.value
@@ -52,6 +59,7 @@ struct ForcePeekMonitor: View {
     private func clearMemory() {
         lastAutoPlayed = nil
         lastAutoStaged = nil
+        lastAutoSpoken = nil
     }
 
     private func reset() {

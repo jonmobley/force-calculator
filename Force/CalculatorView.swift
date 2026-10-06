@@ -24,7 +24,8 @@ struct CalculatorView: View {
     var body: some View {
         CalculatorViewRoot(
             settings: settings,
-            onDismiss: dismissCalculator
+            onDismiss: dismissCalculator,
+            onSpectatorEntry: { EarpiecePrefs.handle($0) }
         )
     }
 

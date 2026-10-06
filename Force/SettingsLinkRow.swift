@@ -36,6 +36,7 @@ struct SettingsLinkRow: View {
 /// Pages reachable from the performer home list.
 enum ForceSettingsPage: Hashable {
     case livePeek
+    case earpiece
     case phone
     case share
     case appearance

@@ -2,6 +2,14 @@ import Combine
 import Foundation
 import SwiftUI
 
+/// A number the spectator finished, handed to the host so the performer can hear it.
+public enum SpectatorEntry: Equatable {
+    /// A number they typed, closed by an operator or equals.
+    case typed(String)
+    /// The answer equals showed them.
+    case answer(String)
+}
+
 /// The calculator's non-view state and key handling, shared by the host app and the
 /// App Clip so the two targets cannot drift on behaviour.
 ///
@@ -37,6 +45,10 @@ public final class CalculatorSession: ObservableObject {
     /// Optional peek pipe. The clip creates one and injects it; the host leaves it
     /// nil, since peek is a spectator-to-performer feed and the host never reports.
     public var peekReporter: PeekReporter?
+
+    /// Host-only: told about each number the spectator finishes (never the performer's
+    /// own setup), so the earpiece voice can say it. The clip leaves it nil.
+    public var onSpectatorEntry: ((SpectatorEntry) -> Void)?
 
     private let settings: CalculatorSettings
     private var modeHideWorkItem: DispatchWorkItem?
@@ -214,6 +226,7 @@ public final class CalculatorSession: ObservableObject {
         // the running total, and the performer wants the number the spectator typed.
         let typed = calc.display
         let typedIsSecret = peekSuppressed
+        let typedSomething = calc.userIsTyping
         // An operator pressed part-way through an entry finishes the sum on the go first,
         // so the display carries the running total into the next operation.
         if op != .percent,
@@ -228,6 +241,7 @@ public final class CalculatorSession: ObservableObject {
         )
         hasEntryToClear = false
         closePeek(typed, with: op.peekSymbol, suppressed: typedIsSecret)
+        if typedSomething, !typedIsSecret { onSpectatorEntry?(.typed(typed)) }
     }
 
     public func equals() {
@@ -237,12 +251,17 @@ public final class CalculatorSession: ObservableObject {
         // Read before evaluating: the Perfect Plus reveal resets the trick, which would
         // otherwise let the staged number through as if the spectator had typed it.
         let typedIsSecret = peekSuppressed
+        let typedSomething = calc.userIsTyping
         evaluate()
         hasEntryToClear = false
         // The number the spectator pressed equals on, then the answer they were shown,
         // which is a new entry of its own.
         closePeek(typed, with: "=", suppressed: typedIsSecret)
         reportPeek()
+        if let onSpectatorEntry, !typedIsSecret {
+            if typedSomething { onSpectatorEntry(.typed(typed)) }
+            if !peekSuppressed { onSpectatorEntry(.answer(calc.display)) }
+        }
     }
 
     /// The calculation itself, with no reporting. Callers decide what the performer

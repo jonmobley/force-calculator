@@ -18,6 +18,7 @@ struct ContentView: View {
     @State private var showingPeekStage = false
     @State private var showingSavedNumbers = false
     @State private var showingSavedDays = false
+    @AppStorage(EarpiecePrefs.enabledKey) private var earpieceEnabled = false
 
     private var themeColor: Color { settings.buttonTheme.color }
 
@@ -91,6 +92,8 @@ struct ContentView: View {
                          color: .indigo, detail: phoneDetail)
             settingsLink(.share, title: "QR Code & NFC", symbol: "qrcode",
                          color: .teal, detail: nil)
+            settingsLink(.earpiece, title: "Earpiece Voice", symbol: "headphones",
+                         color: .orange, detail: earpieceEnabled ? "On" : "Off")
         }
     }
 
@@ -120,6 +123,8 @@ struct ContentView: View {
         switch route {
         case .livePeek:
             ForceLivePeekPage(reader: peekReader, showingStage: $showingPeekStage)
+        case .earpiece:
+            EarpieceVoicePage()
         case .phone:
             ForcePhonePage(
                 selectedPhotoItem: $selectedPhotoItem,
