@@ -46,19 +46,19 @@ magic,magician,mentalism,calculator,prop,prediction,force,app clip,nfc,qr
 
 ## Support URL
 
-https://forcemagic.app/support
+https://moxieapps.io/force/support
 
 ## Marketing URL (optional)
 
-https://forcemagic.app
+https://moxieapps.io/force
 
 ## Privacy Policy URL
 
-https://forcemagic.app/privacy
+https://moxieapps.io/force/privacy
 
 ## Copyright
 
-© 2026 Jonathan Mobley
+© 2026 Moxie LLC
 
 ## Age rating
 

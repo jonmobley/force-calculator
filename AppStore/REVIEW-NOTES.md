@@ -13,7 +13,7 @@ Price (3.0). Yes. $49.99 is the intended price. This is a professional prop, not
 
 Equals (2.1). Defaults: force number 4,556,325, count 3. Type 12 + 34 and press equals. The display shows 46. Press equals again and it repeats, like a normal calculator. On the third press the display shows 4,556,325. That is the force. Every other key does what a calculator key does.
 
-Support URL (1.5). https://forcemagic.app/support
+Support URL (1.5). https://moxieapps.io/force/support
 
 Screenshots (2.3.3). iPhone only. Screenshots show the real UI: force reveal, settings, QR/NFC, and the performer home. Please ignore leftover iPad media.
 
